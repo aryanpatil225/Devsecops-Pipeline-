@@ -2,7 +2,6 @@ provider "aws" {
   region = "ap-south-1"
 }
 
-# VPC - FREE
 resource "aws_vpc" "main" {
   cidr_block = "10.123.0.0/16"
   tags = {
@@ -10,7 +9,6 @@ resource "aws_vpc" "main" {
   }
 }
 
-# Public Subnet - FREE
 resource "aws_subnet" "public" {
   vpc_id                  = aws_vpc.main.id
   cidr_block              = "10.123.1.0/24"
@@ -21,7 +19,6 @@ resource "aws_subnet" "public" {
   }
 }
 
-# Internet Gateway - FREE
 resource "aws_internet_gateway" "igw" {
   vpc_id = aws_vpc.main.id
   tags = {
@@ -29,24 +26,19 @@ resource "aws_internet_gateway" "igw" {
   }
 }
 
-# Route Table - FREE
 resource "aws_default_route_table" "main" {
   default_route_table_id = aws_vpc.main.default_route_table_id
-  
   route {
     cidr_block = "0.0.0.0/0"
     gateway_id = aws_internet_gateway.igw.id
   }
 }
 
-# FIXED Security Group - NO SSH + Restricted Egress
 resource "aws_security_group" "web_sg" {
   name        = "devsecops-sg-free"
   vpc_id      = aws_vpc.main.id
-  description = "Secure SG - HTTP FastAPI only"
 
   ingress {
-    description = "HTTP"
     from_port   = 80
     to_port     = 80
     protocol    = "tcp"
@@ -54,7 +46,6 @@ resource "aws_security_group" "web_sg" {
   }
 
   ingress {
-    description = "FastAPI"
     from_port   = 8000
     to_port     = 8000
     protocol    = "tcp"
@@ -62,7 +53,6 @@ resource "aws_security_group" "web_sg" {
   }
 
   egress {
-    description = "HTTPS"
     from_port   = 443
     to_port     = 443
     protocol    = "tcp"
@@ -70,7 +60,6 @@ resource "aws_security_group" "web_sg" {
   }
 
   egress {
-    description = "HTTP"
     from_port   = 80
     to_port     = 80
     protocol    = "tcp"
@@ -82,11 +71,10 @@ resource "aws_security_group" "web_sg" {
   }
 }
 
-# FREE TIER EC2 with ALL FIXES
 resource "aws_instance" "app" {
-  ami                    = "ami-0f5ee6cb1e35c1d3d"
-  instance_type          = "t2.micro"
-  subnet_id              = aws_subnet.public.id
+  ami           = "ami-0f5ee6cb1e35c1d3d"
+  instance_type = "t2.micro"
+  subnet_id     = aws_subnet.public.id
   vpc_security_group_ids = [aws_security_group.web_sg.id]
 
   metadata_options {
@@ -98,7 +86,7 @@ resource "aws_instance" "app" {
     volume_size = 20
   }
 
-  user_data = base64encode(<<-EOF
+  user_data = base64encode
 #!/bin/bash
 dnf update -y
 dnf install docker python3-pip git -y
@@ -118,8 +106,7 @@ def health():
     return {"status": "healthy"}
 APP
 nohup uvicorn app:app --host 0.0.0.0 --port 8000 &
-EOF
-  )
+
 
   tags = {
     Name = "devsecops-free-app"
