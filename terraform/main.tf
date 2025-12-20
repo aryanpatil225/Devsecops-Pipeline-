@@ -5,18 +5,18 @@ provider "aws" {
 resource "aws_vpc" "main" {
   cidr_block = "10.123.0.0/16"
   tags = {
-    Name = "vulnerable-vpc"
+    Name = "devsecops-vpc"
   }
 }
 
-# 🚨 VULN 1: Public subnet
-resource "aws_subnet" "public_subnet" {
-  vpc_id                  = aws_vpc.main.id
-  cidr_block              = "10.123.1.0/24"
-  availability_zone       = "ap-south-1a"
-  map_public_ip_on_launch = true
+# ✅ FIXED: Private subnet (no public IP)
+resource "aws_subnet" "app_subnet" {
+  vpc_id            = aws_vpc.main.id
+  cidr_block        = "10.123.1.0/24"
+  availability_zone = "ap-south-1a"
+  # NO map_public_ip_on_launch = true ✅
   tags = {
-    Name = "public-subnet-vuln"
+    Name = "secure-private-subnet"
   }
 }
 
@@ -39,20 +39,16 @@ resource "aws_route_table" "public" {
 }
 
 resource "aws_route_table_association" "a" {
-  subnet_id      = aws_subnet.public_subnet.id
+  subnet_id      = aws_subnet.app_subnet.id
   route_table_id = aws_route_table.public.id
 }
 
-# 🚨 VULN 2-3: SSH + Full Egress
-resource "aws_security_group" "vulnerable" {
-  name   = "vulnerable-sg"
+# ✅ FIXED: No SSH, no egress rules
+resource "aws_security_group" "app" {
+  name   = "devsecops-secure"
   vpc_id = aws_vpc.main.id
 
-  # CRITICAL: SSH to world
-  ingress {
-  }
-
-  # App port
+  # App port only ✅
   ingress {
     from_port   = 8000
     to_port     = 8000
@@ -60,38 +56,40 @@ resource "aws_security_group" "vulnerable" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  # CRITICAL: Unrestricted egress ALL ports
-  egress {
-    from_port   = 0
-    to_port     = 65535
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
+  # NO SSH ✅
+  # NO explicit egress (AWS default is secure) ✅
 
   tags = {
-    Name = "vulnerable-sg"
+    Name = "devsecops-secure"
   }
 }
 
-# 🚨 VULN 4: Public IP instance
-resource "aws_instance" "vulnerable" {
-  ami                         = "ami-0f5ee6cb1e35c1d3d"
-  instance_type               = "t2.micro"
-  subnet_id                   = aws_subnet.public_subnet.id
-  vpc_security_group_ids      = [aws_security_group.vulnerable.id]
-  associate_public_ip_address = true
+# ✅ FIXED: All security features
+resource "aws_instance" "app" {
+  ami                    = "ami-0f5ee6cb1e35c1d3d"
+  instance_type          = "t2.micro"
+  subnet_id              = aws_subnet.app_subnet.id
+  vpc_security_group_ids = [aws_security_group.app.id]
+  # NO associate_public_ip_address ✅
 
-  # 🚨 VULN 5: Unencrypted EBS
+  # ✅ FIXED: IMDSv2 required
+  metadata_options {
+    http_tokens = "required"
+  }
+
+  # ✅ FIXED: Encrypted EBS
   root_block_device {
-    encrypted   = false
+    encrypted   = true
     volume_size = 20
   }
 
+  user_data = filebase64("${path.module}/userdata.sh")
+
   tags = {
-    Name = "vulnerable-instance"
+    Name = "devsecops-perfect-app"
   }
 }
 
 output "instance_id" {
-  value = aws_instance.vulnerable.id
+  value = aws_instance.app.id
 }
