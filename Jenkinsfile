@@ -23,7 +23,7 @@ pipeline {
                     curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
                     
                     echo "🚨 SCANNING FOR VULNERABILITIES..."
-                    trivy config --severity HIGH,CRITICAL ./terraform > trivy-results.txt
+                    trivy config --severity HIGH,CRITICAL tfplan > trivy-results.txt
                     
                     echo "📊 Generating JSON report..."
                     trivy config --format json --output trivy-report.json ./terraform
