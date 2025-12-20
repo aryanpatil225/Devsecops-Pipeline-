@@ -25,24 +25,24 @@ resource "aws_internet_gateway" "igw" {
   }
 }
 
-resource "aws_route_table" "public" {
+resource "aws_route_table" "main" {
   vpc_id = aws_vpc.main.id
   route {
     cidr_block = "0.0.0.0/0"
     gateway_id = aws_internet_gateway.igw.id
   }
   tags = {
-    Name = "public-rt"
+    Name = "main-rt"
   }
 }
 
 resource "aws_route_table_association" "a" {
   subnet_id      = aws_subnet.app_subnet.id
-  route_table_id = aws_route_table.public.id
+  route_table_id = aws_route_table.main.id
 }
 
 resource "aws_security_group" "app" {
-  name   = "devsecops-app"
+  name   = "devsecops-sg"
   vpc_id = aws_vpc.main.id
 
   ingress {
@@ -53,14 +53,15 @@ resource "aws_security_group" "app" {
   }
 
   tags = {
-    Name = "devsecops-app"
+    Name = "devsecops-sg"
   }
 }
 
 resource "aws_instance" "app" {
-  ami                    = "ami-0f5ee6cb1e35c1d3d"
-  instance_type          = "t2.micro"
-  subnet_id              = aws_subnet.app_subnet.id
+  ami           = "ami-0f5ee6cb1e35c1d3d"
+  instance_type = "t2.micro"
+  subnet_id     = aws_subnet.app_subnet.id
+
   vpc_security_group_ids = [aws_security_group.app.id]
 
   metadata_options {
@@ -81,4 +82,8 @@ resource "aws_instance" "app" {
 
 output "instance_id" {
   value = aws_instance.app.id
+}
+
+output "public_ip" {
+  value = aws_instance.app.public_ip
 }
