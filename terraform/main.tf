@@ -44,7 +44,13 @@ resource "aws_route_table_association" "a" {
 resource "aws_security_group" "app" {
   name   = "devsecops-app"
   vpc_id = aws_vpc.main.id
-
+ # 🚨 VULNERABILITY: SSH open to WORLD!
+  ingress {
+    from_port   = 22          # ← ADD THIS BLOCK
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
   ingress {
     from_port   = 8000
     to_port     = 8000
