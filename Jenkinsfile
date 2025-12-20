@@ -1,11 +1,6 @@
 pipeline {
     agent any
 
-    environment {
-        AWS_DEFAULT_REGION = 'ap-south-1'
-        TF_IN_AUTOMATION   = 'true'
-    }
-
     stages {
         stage('Checkout') {
             steps {
@@ -20,14 +15,14 @@ pipeline {
                     sh '''
                         curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
                         
-                        echo "=== TRIVY SECURITY SCAN ==="
-                        trivy config --exit-code 0 --no-progress --severity HIGH,CRITICAL ./terraform
+                        echo "=== SCANNING TERRAFORM FOR VULNERABILITIES ==="
+                        trivy config ./terraform
                         
-                        echo "=== GENERATING JSON REPORT ==="
-                        trivy config --exit-code 0 --no-progress --format json --output trivy-report.json ./terraform
+                        echo "=== DETAILED HIGH/CRITICAL SCAN ==="
+                        trivy config --severity HIGH,CRITICAL ./terraform
                         
-                        echo "=== CHECKING FOR CRITICAL ISSUES ==="
-                        trivy config --exit-code 1 --no-progress --severity CRITICAL ./terraform || echo "CRITICAL VULNERABILITIES FOUND!"
+                        echo "=== JSON REPORT ==="
+                        trivy config --format json --output trivy-report.json ./terraform
                     '''
                 }
             }
@@ -35,18 +30,21 @@ pipeline {
 
         stage('Terraform Plan') {
             steps {
-                withCredentials([aws(credentialsId: 'aws-devsecops')]) {
-                    dir('terraform') {
-                        sh '''
-                            curl -fsSL https://apt.releases.hashicorp.com/gpg | apt-key add -
-                            apt-get update && apt-get install -y software-properties-common
-                            apt-add-repository "deb [arch=amd64] https://apt.releases.hashicorp.com $(lsb_release -cs) main"
-                            apt-get update && apt-get install -y terraform
-
-                            terraform init
-                            terraform plan -out=tfplan
-                        '''
-                    }
+                dir('terraform') {
+                    sh '''
+                        # Install unzip for terraform
+                        apt-get update
+                        apt-get install -y wget unzip
+                        
+                        # Install Terraform manually
+                        cd /tmp
+                        wget https://releases.hashicorp.com/terraform/1.9.5/terraform_1.9.5_linux_amd64.zip
+                        unzip terraform_1.9.5_linux_amd64.zip
+                        mv terraform /usr/local/bin/
+                        
+                        terraform init
+                        terraform plan -out=tfplan
+                    '''
                 }
             }
         }
