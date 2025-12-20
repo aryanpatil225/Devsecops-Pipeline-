@@ -27,12 +27,10 @@ resource "aws_internet_gateway" "igw" {
 
 resource "aws_route_table" "public" {
   vpc_id = aws_vpc.main.id
-
   route {
     cidr_block = "0.0.0.0/0"
     gateway_id = aws_internet_gateway.igw.id
   }
-
   tags = {
     Name = "public-rt"
   }
@@ -60,11 +58,10 @@ resource "aws_security_group" "app" {
 }
 
 resource "aws_instance" "app" {
-  ami                         = "ami-0f5ee6cb1e35c1d3d"
-  instance_type               = "t2.micro"
-  subnet_id                   = aws_subnet.app_subnet.id
-  vpc_security_group_ids      = [aws_security_group.app.id]
-  associate_public_ip_address = true
+  ami                    = "ami-0f5ee6cb1e35c1d3d"
+  instance_type          = "t2.micro"
+  subnet_id              = aws_subnet.app_subnet.id
+  vpc_security_group_ids = [aws_security_group.app.id]
 
   metadata_options {
     http_tokens = "required"
@@ -75,13 +72,13 @@ resource "aws_instance" "app" {
     volume_size = 20
   }
 
-  user_data = base64encode(templatefile("${path.module}/userdata.sh", {}))
+  user_data = filebase64("${path.module}/userdata.sh")
 
   tags = {
     Name = "devsecops-app"
   }
 }
 
-output "public_ip" {
-  value = aws_instance.app.public_ip
+output "instance_id" {
+  value = aws_instance.app.id
 }

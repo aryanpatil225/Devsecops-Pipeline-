@@ -9,12 +9,12 @@ mkdir -p /app
 cd /app
 pip3 install fastapi uvicorn
 
-cat > app.py <<PYEOF
+cat > app.py << 'PYEOF'
 from fastapi import FastAPI
 app = FastAPI()
 @app.get("/")
 def root():
-    return {"status": "🚀 DevSecOps PERFECT!", "vulnerabilities": 0}
+    return {"status": "🚀 DevSecOps 0 VULNERABILITIES!", "vulnerabilities": 0}
 @app.get("/health")
 def health():
     return {"status": "healthy"}
