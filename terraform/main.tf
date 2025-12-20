@@ -9,12 +9,12 @@ resource "aws_vpc" "main" {
   }
 }
 
-resource "aws_subnet" "private" {
+resource "aws_subnet" "app_subnet" {
   vpc_id            = aws_vpc.main.id
   cidr_block        = "10.123.1.0/24"
   availability_zone = "ap-south-1a"
   tags = {
-    Name = "private-subnet"
+    Name = "app-subnet"
   }
 }
 
@@ -25,24 +25,26 @@ resource "aws_internet_gateway" "igw" {
   }
 }
 
-resource "aws_route_table" "main" {
+resource "aws_route_table" "public" {
   vpc_id = aws_vpc.main.id
+
   route {
     cidr_block = "0.0.0.0/0"
     gateway_id = aws_internet_gateway.igw.id
   }
+
   tags = {
-    Name = "main-rt"
+    Name = "public-rt"
   }
 }
 
-resource "aws_route_table_association" "main" {
-  subnet_id      = aws_subnet.private.id
-  route_table_id = aws_route_table.main.id
+resource "aws_route_table_association" "a" {
+  subnet_id      = aws_subnet.app_subnet.id
+  route_table_id = aws_route_table.public.id
 }
 
-resource "aws_security_group" "app_sg" {
-  name   = "devsecops-sg"
+resource "aws_security_group" "app" {
+  name   = "devsecops-app"
   vpc_id = aws_vpc.main.id
 
   ingress {
@@ -53,15 +55,16 @@ resource "aws_security_group" "app_sg" {
   }
 
   tags = {
-    Name = "devsecops-sg"
+    Name = "devsecops-app"
   }
 }
 
 resource "aws_instance" "app" {
-  ami                    = "ami-0f5ee6cb1e35c1d3d"
-  instance_type          = "t2.micro"
-  subnet_id              = aws_subnet.private.id
-  vpc_security_group_ids = [aws_security_group.app_sg.id]
+  ami                         = "ami-0f5ee6cb1e35c1d3d"
+  instance_type               = "t2.micro"
+  subnet_id                   = aws_subnet.app_subnet.id
+  vpc_security_group_ids      = [aws_security_group.app.id]
+  associate_public_ip_address = true
 
   metadata_options {
     http_tokens = "required"
@@ -72,32 +75,13 @@ resource "aws_instance" "app" {
     volume_size = 20
   }
 
-  user_data = base64encode
-#!/bin/bash
-dnf update -y
-dnf install docker python3-pip git -y
-systemctl start docker
-systemctl enable docker
-usermod -aG docker ec2-user
-mkdir -p /app && cd /app
-pip3 install fastapi uvicorn
-cat > app.py <<APP
-from fastapi import FastAPI
-app = FastAPI()
-@app.get("/")
-def root():
-    return {"status": "🚀 DevSecOps 0 VULNERABILITIES!", "secure": true}
-@app.get("/health")
-def health():
-    return {"status": "healthy"}
-APP
-nohup uvicorn app:app --host 0.0.0.0 --port 8000 &
+  user_data = base64encode(templatefile("${path.module}/userdata.sh", {}))
 
   tags = {
     Name = "devsecops-app"
   }
 }
 
-output "instance_id" {
-  value = aws_instance.app.id
+output "public_ip" {
+  value = aws_instance.app.public_ip
 }
