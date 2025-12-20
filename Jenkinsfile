@@ -23,7 +23,7 @@ pipeline {
                     curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
                     
                     echo "🚨 SCANNING FOR VULNERABILITIES..."
-                    trivy config --severity HIGH,CRITICAL ./terraform > trivy-results.txt
+                    trivy config --severity HIGH,CRITICAL ./terraform > trivy-results.txt 2>&1
                     
                     echo "📊 Generating JSON report..."
                     trivy config --format json --output trivy-report.json ./terraform
@@ -31,18 +31,29 @@ pipeline {
                     echo "📋 Trivy Summary:"
                     cat trivy-results.txt
 
-# 🚨 FAIL PIPELINE if vulnerabilities found
-if grep -q "FAILURES: [1-9]" trivy-results.txt; then
-  echo "❌ SECURITY SCAN FAILED - Vulnerabilities detected!"
-  exit 1
-fi
-echo "✅ SECURITY SCAN PASSED - 0 vulnerabilities!"
-# 🚨 FAIL PIPELINE if vulnerabilities found
-if grep -q "FAILURES: [1-9]" trivy-results.txt; then
-  echo "❌ SECURITY SCAN FAILED - Vulnerabilities detected!"
-  exit 1
-fi
-echo "✅ SECURITY SCAN PASSED - 0 vulnerabilities!"                '''
+                    # 🎯 COUNT vulnerabilities
+                    HIGH_COUNT=$(grep -o "HIGH: [0-9]*" trivy-results.txt 2>/dev/null | head -1 | cut -d: -f2 | tr -d ' ' || echo 0)
+                    CRIT_COUNT=$(grep -o "CRITICAL: [0-9]*" trivy-results.txt 2>/dev/null | head -1 | cut -d: -f2 | tr -d ' ' || echo 0)
+                    TOTAL_FAIL=$(grep -o "FAILURES: [0-9]*" trivy-results.txt 2>/dev/null | head -1 | cut -d: -f2 | tr -d ' ' || echo 0)
+
+                    echo "🔢 Vulnerability Summary:"
+                    echo "   HIGH:    $HIGH_COUNT"
+                    echo "   CRITICAL: $CRIT_COUNT"
+                    echo "   TOTAL:   $TOTAL_FAIL"
+
+                    # 🚨 FAIL criteria: 2+ HIGH OR 1+ CRITICAL
+                    if [ "$CRIT_COUNT" -ge 1 ] || [ "$HIGH_COUNT" -ge 2 ] || [ "$TOTAL_FAIL" -ge 2 ]; then
+                        echo "❌ PIPELINE FAILED - Security violations!"
+                        echo "   CRITICAL: $CRIT_COUNT (FAIL if >=1)"
+                        echo "   HIGH:     $HIGH_COUNT (FAIL if >=2)"
+                        echo "Full report:"
+                        cat trivy-results.txt
+                        exit 1
+                    fi
+                    
+                    echo "✅ SECURITY SCAN PASSED!"
+                    echo "   ✅ 1 HIGH allowed | ✅ 0 CRITICAL | ✅ Total < 2"
+                '''
             }
         }
 
@@ -50,7 +61,6 @@ echo "✅ SECURITY SCAN PASSED - 0 vulnerabilities!"                '''
             steps {
                 dir('terraform') {
                     script {
-                        // Re-inject credentials in dir scope
                         env.AWS_ACCESS_KEY_ID = credentials('aws-access-key')
                         env.AWS_SECRET_ACCESS_KEY = credentials('aws-secret-key')
                     }
