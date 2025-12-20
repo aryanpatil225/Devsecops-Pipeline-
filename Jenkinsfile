@@ -34,16 +34,18 @@ pipeline {
             steps {
                 dir('terraform') {
                     sh '''
-                        echo "📦 Installing Terraform..."
+                        echo "📦 Installing ARM64 Terraform..."
                         apt-get update
                         apt-get install -y wget unzip
                         
                         cd /tmp
-                        wget https://releases.hashicorp.com/terraform/1.9.5/terraform_1.9.5_linux_amd64.zip
-                        unzip terraform_1.9.5_linux_amd64.zip
+                        wget https://releases.hashicorp.com/terraform/1.9.5/terraform_1.9.5_linux_arm64.zip
+                        unzip terraform_1.9.5_linux_arm64.zip
                         mv terraform /usr/local/bin/
+                        chmod +x /usr/local/bin/terraform
                         
                         echo "🔄 Initializing Terraform..."
+                        terraform version
                         terraform init
                         
                         echo "📋 Running terraform plan..."
