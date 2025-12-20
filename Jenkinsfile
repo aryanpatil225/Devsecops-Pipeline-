@@ -22,11 +22,17 @@ pipeline {
                     echo "🔧 Installing Trivy..."
                     curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
                     
-                    echo "🚨 SCANNING FOR VULNERABILITIES..."
-                    trivy config --severity HIGH,CRITICAL ./terraform > trivy-results.txt 2>&1
+                    echo "🔄 Terraform Init & Plan for Security Scan..."
+                    cd terraform
+                    terraform init
+                    terraform plan -out=tfplan
+                    
+                    cd ..
+                    echo "🚨 SCANNING TERRAFORM PLAN (tfplan)..."
+                    trivy config --severity HIGH,CRITICAL terraform/tfplan > trivy-results.txt 2>&1
                     
                     echo "📊 Generating JSON report..."
-                    trivy config --format json --output trivy-report.json ./terraform
+                    trivy config --format json --output trivy-report.json terraform/tfplan
                     
                     echo "📋 Trivy Summary:"
                     cat trivy-results.txt
