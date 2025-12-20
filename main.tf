@@ -71,7 +71,7 @@ resource "aws_instance" "app" {
 
   metadata_options {
     http_tokens = "required"
-  } 
+  }
 
   root_block_device {
     encrypted   = true
