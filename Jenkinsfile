@@ -34,27 +34,24 @@ pipeline {
             steps {
                 dir('terraform') {
                     sh '''
-                        echo "📦 Installing ARM64 Terraform..."
-                        apt-get update
-                        apt-get install -y wget unzip
+                        echo "📦 Installing ARM64 Terraform (if needed)..."
+                        which terraform || (
+                            apt-get update &&
+                            apt-get install -y wget unzip &&
+                            cd /tmp &&
+                            rm -rf terraform* &&
+                            wget https://releases.hashicorp.com/terraform/1.9.5/terraform_1.9.5_linux_arm64.zip &&
+                            unzip -o -q terraform_1.9.5_linux_arm64.zip &&
+                            mv terraform /usr/local/bin/ &&
+                            chmod +x /usr/local/bin/terraform
+                        )
                         
-                        cd /tmp
-                        rm -rf terraform*  # Clean previous downloads
+                        echo "✅ Terraform ready: $(terraform version)"
                         
-                        echo "⬇️ Downloading Terraform ARM64..."
-                        wget https://releases.hashicorp.com/terraform/1.9.5/terraform_1.9.5_linux_arm64.zip
+                        echo "🔄 Initializing in CORRECT directory..."
+                        pwd  # Should show /var/jenkins_home/.../terraform
+                        ls -la  # Should show .tf files
                         
-                        echo "📦 Extracting (non-interactive)..."
-                        unzip -o -q terraform_1.9.5_linux_arm64.zip  # -o=overwrite, -q=quiet
-                        
-                        echo "🔧 Installing..."
-                        mv terraform /usr/local/bin/
-                        chmod +x /usr/local/bin/terraform
-                        
-                        echo "✅ Terraform version check:"
-                        terraform version
-                        
-                        echo "🔄 Initializing Terraform..."
                         terraform init
                         
                         echo "📋 Running terraform plan..."
@@ -68,7 +65,7 @@ pipeline {
 
     post {
         always {
-            archiveArtifacts artifacts: '*.txt,trivy-report.json,tfplan', allowEmptyArchive: true
+            archiveArtifacts artifacts: 'trivy-results.txt,trivy-report.json,tfplan', allowEmptyArchive: true
             sh 'echo "🏁 Pipeline complete - check artifacts!"'
         }
     }
