@@ -44,7 +44,6 @@ resource "aws_route_table_association" "a" {
 resource "aws_security_group" "app" {
   name   = "devsecops-app"
   vpc_id = aws_vpc.main.id
- 
 
   ingress {
     from_port   = 8000
