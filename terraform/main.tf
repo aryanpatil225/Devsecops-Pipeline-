@@ -43,10 +43,17 @@ resource "aws_route_table_association" "a" {
 }
 
 resource "aws_security_group" "app" {
-  name   = "devsecops-secure"
+  name   = "devsecops-vulnerable"
   vpc_id = aws_vpc.main.id
 
-  # NO SSH port ✅
+  # 🚨 VULNERABILITY: SSH open to world
+  ingress {
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
   ingress {
     from_port   = 8000
     to_port     = 8000
@@ -54,14 +61,10 @@ resource "aws_security_group" "app" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  # NO explicit egress rules ✅ (AWS default is fine)
   tags = {
-    Name = "devsecops-secure"
+    Name = "devsecops-vulnerable"
   }
-}
-
-resource "aws_instance" "app" {
-  ami                    = "ami-0f5ee6cb1e35c1d3d"
+}  ami                    = "ami-0f5ee6cb1e35c1d3d"
   instance_type          = "t2.micro"
   subnet_id              = aws_subnet.app_subnet.id
   vpc_security_group_ids = [aws_security_group.app.id]
