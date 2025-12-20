@@ -10,12 +10,12 @@ resource "aws_vpc" "main" {
 }
 
 resource "aws_subnet" "app_subnet" {
-  vpc_id                  = aws_vpc.main.id
-  cidr_block              = "10.123.1.0/24"
-  availability_zone       = "ap-south-1a"
-  map_public_ip_on_launch = true                    # 🚨 VULN 1
+  vpc_id            = aws_vpc.main.id
+  cidr_block        = "10.123.1.0/24"
+  availability_zone = "ap-south-1a"
+  # NO map_public_ip_on_launch = true ✅
   tags = {
-    Name = "vulnerable-public-subnet"
+    Name = "secure-subnet"
   }
 }
 
@@ -43,17 +43,10 @@ resource "aws_route_table_association" "a" {
 }
 
 resource "aws_security_group" "app" {
-  name   = "devsecops-vulnerable"
+  name   = "devsecops-secure"
   vpc_id = aws_vpc.main.id
 
-  # 🚨 VULN 2: SSH open to world
-  ingress {
-    from_port   = 22
-    to_port     = 22
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
+  # NO SSH port ✅
   ingress {
     from_port   = 8000
     to_port     = 8000
@@ -61,39 +54,32 @@ resource "aws_security_group" "app" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  # 🚨 VULN 3: Unrestricted egress
-  egress {
-    from_port   = 0
-    to_port     = 65535
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
+  # NO explicit egress rules ✅ (AWS default is fine)
   tags = {
-    Name = "devsecops-vulnerable"
+    Name = "devsecops-secure"
   }
 }
 
 resource "aws_instance" "app" {
-  ami                         = "ami-0f5ee6cb1e35c1d3d"
-  instance_type               = "t2.micro"
-  subnet_id                   = aws_subnet.app_subnet.id
-  vpc_security_group_ids      = [aws_security_group.app.id]
-  associate_public_ip_address = true                    # 🚨 VULN 4
+  ami                    = "ami-0f5ee6cb1e35c1d3d"
+  instance_type          = "t2.micro"
+  subnet_id              = aws_subnet.app_subnet.id
+  vpc_security_group_ids = [aws_security_group.app.id]
+  # NO associate_public_ip_address ✅
 
   metadata_options {
-    http_tokens = "required"
+    http_tokens = "required"  # IMDSv2 ✅
   }
 
   root_block_device {
-    encrypted   = false                                # 🚨 VULN 5
+    encrypted   = true        # Encrypted EBS ✅
     volume_size = 20
   }
 
   user_data = filebase64("${path.module}/userdata.sh")
 
   tags = {
-    Name = "vulnerable-app"
+    Name = "devsecops-secure-app"
   }
 }
 
