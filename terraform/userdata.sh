@@ -14,7 +14,7 @@ from fastapi import FastAPI
 app = FastAPI()
 @app.get("/")
 def root():
-    return {"status": "🚀 DevSecOps 0 VULNERABILITIES!", "vulnerabilities": 0}
+    return {"status": "🚨 VULNERABLE VERSION - 5 Issues!", "vulnerabilities": 5}
 @app.get("/health")
 def health():
     return {"status": "healthy"}

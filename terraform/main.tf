@@ -13,7 +13,7 @@ resource "aws_subnet" "app_subnet" {
   vpc_id                  = aws_vpc.main.id
   cidr_block              = "10.123.1.0/24"
   availability_zone       = "ap-south-1a"
-  map_public_ip_on_launch = true
+  map_public_ip_on_launch = true                    # 🚨 VULN 1
   tags = {
     Name = "vulnerable-public-subnet"
   }
@@ -46,6 +46,7 @@ resource "aws_security_group" "app" {
   name   = "devsecops-vulnerable"
   vpc_id = aws_vpc.main.id
 
+  # 🚨 VULN 2: SSH open to world
   ingress {
     from_port   = 22
     to_port     = 22
@@ -60,7 +61,7 @@ resource "aws_security_group" "app" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  # 🚨 VULNERABILITY Trivy DETECTS!
+  # 🚨 VULN 3: Unrestricted egress
   egress {
     from_port   = 0
     to_port     = 65535
@@ -78,14 +79,14 @@ resource "aws_instance" "app" {
   instance_type               = "t2.micro"
   subnet_id                   = aws_subnet.app_subnet.id
   vpc_security_group_ids      = [aws_security_group.app.id]
-  associate_public_ip_address = true
+  associate_public_ip_address = true                    # 🚨 VULN 4
 
   metadata_options {
     http_tokens = "required"
   }
 
   root_block_device {
-    encrypted   = false
+    encrypted   = false                                # 🚨 VULN 5
     volume_size = 20
   }
 
