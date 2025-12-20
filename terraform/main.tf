@@ -25,46 +25,24 @@ resource "aws_internet_gateway" "igw" {
   }
 }
 
-resource "aws_nat_gateway" "nat" {
-  allocation_id = aws_eip.nat.id
-  subnet_id     = aws_subnet.public.id
-  tags = {
-    Name = "devsecops-nat"
-  }
-}
-
-resource "aws_eip" "nat" {
-  domain = "vpc"
-}
-
-resource "aws_subnet" "public" {
-  vpc_id                  = aws_vpc.main.id
-  cidr_block              = "10.123.2.0/24"
-  availability_zone       = "ap-south-1a"
-  map_public_ip_on_launch = true
-  tags = {
-    Name = "public-subnet-nat"
-  }
-}
-
-resource "aws_route_table" "private" {
+resource "aws_route_table" "main" {
   vpc_id = aws_vpc.main.id
   route {
-    cidr_block     = "0.0.0.0/0"
-    nat_gateway_id = aws_nat_gateway.nat.id
+    cidr_block = "0.0.0.0/0"
+    gateway_id = aws_internet_gateway.igw.id
   }
   tags = {
-    Name = "private-rt-nat"
+    Name = "main-rt"
   }
 }
 
-resource "aws_route_table_association" "private" {
+resource "aws_route_table_association" "main" {
   subnet_id      = aws_subnet.private.id
-  route_table_id = aws_route_table.private.id
+  route_table_id = aws_route_table.main.id
 }
 
 resource "aws_security_group" "app_sg" {
-  name   = "devsecops-app-sg"
+  name   = "devsecops-sg"
   vpc_id = aws_vpc.main.id
 
   ingress {
@@ -75,7 +53,7 @@ resource "aws_security_group" "app_sg" {
   }
 
   tags = {
-    Name = "devsecops-app-sg"
+    Name = "devsecops-sg"
   }
 }
 
@@ -94,38 +72,29 @@ resource "aws_instance" "app" {
     volume_size = 20
   }
 
-  user_data = base64encode(<<-EOF
+  user_data = base64encode
 #!/bin/bash
 dnf update -y
-dnf install docker python3-pip -y
+dnf install docker python3-pip git -y
 systemctl start docker
 systemctl enable docker
 usermod -aG docker ec2-user
-
-mkdir -p /app
-cd /app
-
+mkdir -p /app && cd /app
 pip3 install fastapi uvicorn
-
-cat > /app/app.py <<PYEOF
+cat > app.py <<APP
 from fastapi import FastAPI
 app = FastAPI()
-
 @app.get("/")
 def root():
-    return {"status": "🚀 DevSecOps PERFECT 0 VULNERABILITIES!", "secure": True}
-
+    return {"status": "🚀 DevSecOps 0 VULNERABILITIES!", "secure": true}
 @app.get("/health")
 def health():
     return {"status": "healthy"}
-PYEOF
-
-nohup uvicorn app:app --host 0.0.0.0 --port 8000 > /var/log/app.log 2>&1 &
-  EOF
-  )
+APP
+nohup uvicorn app:app --host 0.0.0.0 --port 8000 &
 
   tags = {
-    Name = "devsecops-perfect-app"
+    Name = "devsecops-app"
   }
 }
 
