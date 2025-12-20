@@ -13,7 +13,6 @@ resource "aws_subnet" "app_subnet" {
   vpc_id            = aws_vpc.main.id
   cidr_block        = "10.123.1.0/24"
   availability_zone = "ap-south-1a"
-  # NO map_public_ip_on_launch = true ✅
   tags = {
     Name = "secure-subnet"
   }
@@ -46,7 +45,7 @@ resource "aws_security_group" "app" {
   name   = "devsecops-vulnerable"
   vpc_id = aws_vpc.main.id
 
-  # 🚨 VULNERABILITY: SSH open to world
+  # 🚨 VULNERABILITY #1: SSH open to WORLD!
   ingress {
     from_port   = 22
     to_port     = 22
@@ -54,6 +53,7 @@ resource "aws_security_group" "app" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
+  # App port
   ingress {
     from_port   = 8000
     to_port     = 8000
@@ -64,25 +64,27 @@ resource "aws_security_group" "app" {
   tags = {
     Name = "devsecops-vulnerable"
   }
-}  ami                    = "ami-0f5ee6cb1e35c1d3d"
+}
+
+resource "aws_instance" "app" {
+  ami                    = "ami-0f5ee6cb1e35c1d3d"
   instance_type          = "t2.micro"
   subnet_id              = aws_subnet.app_subnet.id
   vpc_security_group_ids = [aws_security_group.app.id]
-  # NO associate_public_ip_address ✅
 
   metadata_options {
-    http_tokens = "required"  # IMDSv2 ✅
+    http_tokens = "required"
   }
 
   root_block_device {
-    encrypted   = true        # Encrypted EBS ✅
+    encrypted   = true
     volume_size = 20
   }
 
   user_data = filebase64("${path.module}/userdata.sh")
 
   tags = {
-    Name = "devsecops-secure-app"
+    Name = "devsecops-vulnerable-app"
   }
 }
 
