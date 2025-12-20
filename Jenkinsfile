@@ -38,9 +38,11 @@ pipeline {
                     cat trivy-results.txt
 
                     # 🎯 COUNT vulnerabilities
-                    HIGH_COUNT=$(grep -o "HIGH: [0-9]*" trivy-results.txt 2>/dev/null | head -1 | cut -d: -f2 | tr -d ' ' || echo 0)
-                    CRIT_COUNT=$(grep -o "CRITICAL: [0-9]*" trivy-results.txt 2>/dev/null | head -1 | cut -d: -f2 | tr -d ' ' || echo 0)
-                    TOTAL_FAIL=$(grep -o "FAILURES: [0-9]*" trivy-results.txt 2>/dev/null | head -1 | cut -d: -f2 | tr -d ' ' || echo 0)
+                   # NEW (ROBUST parsing)
+HIGH_COUNT=$(grep -oP 'HIGH:\\s*\\K\\d+' trivy-results.txt 2>/dev/null | head -1 || echo 0)
+CRIT_COUNT=$(grep -oP 'CRITICAL:\\s*\\K\\d+' trivy-results.txt 2>/dev/null | head -1 || echo 0)
+TOTAL_FAIL=$(grep -oP 'FAILURES:\\s*\\K\\d+' trivy-results.txt 2>/dev/null | head -1 || echo 0)
+)
 
                     echo "🔢 Vulnerability Summary:"
                     echo "   HIGH:    $HIGH_COUNT"
