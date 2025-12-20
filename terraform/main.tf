@@ -35,8 +35,8 @@ resource "aws_default_route_table" "main" {
 }
 
 resource "aws_security_group" "web_sg" {
-  name        = "devsecops-sg-free"
-  vpc_id      = aws_vpc.main.id
+  name   = "devsecops-sg-free"
+  vpc_id = aws_vpc.main.id
 
   ingress {
     from_port   = 80
@@ -86,27 +86,35 @@ resource "aws_instance" "app" {
     volume_size = 20
   }
 
-  user_data = base64encode
-#!/bin/bash
-dnf update -y
-dnf install docker python3-pip git -y
-systemctl start docker
-systemctl enable docker
-usermod -aG docker ec2-user
-mkdir /app && cd /app
-pip3 install fastapi uvicorn
-cat > app.py << 'APP'
+  user_data = base64encode(<<-EOF
+    #!/bin/bash
+    dnf update -y
+    dnf install docker python3-pip -y
+    systemctl start docker
+    systemctl enable docker
+    usermod -aG docker ec2-user
+    
+    mkdir -p /app
+    cd /app
+    
+    pip3 install fastapi uvicorn
+    
+    cat > /app/app.py <<PYEOF
 from fastapi import FastAPI
 app = FastAPI()
+
 @app.get("/")
 def root():
-    return {"status": "DevSecOps FREE TIER App Live", "secure": True}
+    return {"status": "DevSecOps App Live", "secure": True}
+
 @app.get("/health")
 def health():
     return {"status": "healthy"}
-APP
-nohup uvicorn app:app --host 0.0.0.0 --port 8000 &
-
+PYEOF
+    
+    nohup uvicorn app:app --host 0.0.0.0 --port 8000 > /var/log/app.log 2>&1 &
+  EOF
+  )
 
   tags = {
     Name = "devsecops-free-app"
