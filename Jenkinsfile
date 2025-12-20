@@ -30,7 +30,19 @@ pipeline {
                     
                     echo "📋 Trivy Summary:"
                     cat trivy-results.txt
-                '''
+
+# 🚨 FAIL PIPELINE if vulnerabilities found
+if grep -q "FAILURES: [1-9]" trivy-results.txt; then
+  echo "❌ SECURITY SCAN FAILED - Vulnerabilities detected!"
+  exit 1
+fi
+echo "✅ SECURITY SCAN PASSED - 0 vulnerabilities!"
+# 🚨 FAIL PIPELINE if vulnerabilities found
+if grep -q "FAILURES: [1-9]" trivy-results.txt; then
+  echo "❌ SECURITY SCAN FAILED - Vulnerabilities detected!"
+  exit 1
+fi
+echo "✅ SECURITY SCAN PASSED - 0 vulnerabilities!"                '''
             }
         }
 
