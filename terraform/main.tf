@@ -50,10 +50,6 @@ resource "aws_security_group" "vulnerable" {
 
   # CRITICAL: SSH to world
   ingress {
-    from_port   = 22
-    to_port     = 22
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
   }
 
   # App port
