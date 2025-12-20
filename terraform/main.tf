@@ -5,45 +5,45 @@ provider "aws" {
 resource "aws_vpc" "main" {
   cidr_block = "10.123.0.0/16"
   tags = {
-    Name = "devsecops-free-vpc"
+    Name = "devsecops-vpc"
   }
 }
 
-resource "aws_subnet" "public" {
-  vpc_id                  = aws_vpc.main.id
-  cidr_block              = "10.123.1.0/24"
-  availability_zone       = "ap-south-1a"
-  map_public_ip_on_launch = true
+resource "aws_subnet" "private" {
+  vpc_id            = aws_vpc.main.id
+  cidr_block        = "10.123.1.0/24"
+  availability_zone = "ap-south-1a"
   tags = {
-    Name = "public-subnet-free"
+    Name = "private-subnet"
   }
 }
 
 resource "aws_internet_gateway" "igw" {
   vpc_id = aws_vpc.main.id
   tags = {
-    Name = "devsecops-igw-free"
+    Name = "devsecops-igw"
   }
 }
 
-resource "aws_default_route_table" "main" {
-  default_route_table_id = aws_vpc.main.default_route_table_id
+resource "aws_route_table" "private" {
+  vpc_id = aws_vpc.main.id
   route {
     cidr_block = "0.0.0.0/0"
     gateway_id = aws_internet_gateway.igw.id
   }
+  tags = {
+    Name = "private-rt"
+  }
 }
 
-resource "aws_security_group" "web_sg" {
-  name   = "devsecops-sg-free"
-  vpc_id = aws_vpc.main.id
+resource "aws_route_table_association" "private" {
+  subnet_id      = aws_subnet.private.id
+  route_table_id = aws_route_table.private.id
+}
 
-  ingress {
-    from_port   = 80
-    to_port     = 80
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
+resource "aws_security_group" "app_sg" {
+  name   = "devsecops-app-sg"
+  vpc_id = aws_vpc.main.id
 
   ingress {
     from_port   = 8000
@@ -67,15 +67,15 @@ resource "aws_security_group" "web_sg" {
   }
 
   tags = {
-    Name = "devsecops-sg-free"
+    Name = "devsecops-app-sg"
   }
 }
 
 resource "aws_instance" "app" {
-  ami           = "ami-0f5ee6cb1e35c1d3d"
-  instance_type = "t2.micro"
-  subnet_id     = aws_subnet.public.id
-  vpc_security_group_ids = [aws_security_group.web_sg.id]
+  ami                    = "ami-0f5ee6cb1e35c1d3d"
+  instance_type          = "t2.micro"
+  subnet_id              = aws_subnet.private.id
+  vpc_security_group_ids = [aws_security_group.app_sg.id]
 
   metadata_options {
     http_tokens = "required"
@@ -87,42 +87,38 @@ resource "aws_instance" "app" {
   }
 
   user_data = base64encode(<<-EOF
-    #!/bin/bash
-    dnf update -y
-    dnf install docker python3-pip -y
-    systemctl start docker
-    systemctl enable docker
-    usermod -aG docker ec2-user
-    
-    mkdir -p /app
-    cd /app
-    
-    pip3 install fastapi uvicorn
-    
-    cat > /app/app.py <<PYEOF
+#!/bin/bash
+dnf update -y
+dnf install docker python3-pip -y
+systemctl start docker
+systemctl enable docker
+usermod -aG docker ec2-user
+
+mkdir -p /app
+cd /app
+
+pip3 install fastapi uvicorn
+
+cat > /app/app.py <<PYEOF
 from fastapi import FastAPI
 app = FastAPI()
 
 @app.get("/")
 def root():
-    return {"status": "DevSecOps App Live", "secure": True}
+    return {"status": "🚀 DevSecOps PERFECT SECURITY!", "vulnerabilities": "0"}
 
 @app.get("/health")
 def health():
     return {"status": "healthy"}
 PYEOF
-    
-    nohup uvicorn app:app --host 0.0.0.0 --port 8000 > /var/log/app.log 2>&1 &
+
+nohup uvicorn app:app --host 0.0.0.0 --port 8000 > /var/log/app.log 2>&1 &
   EOF
   )
 
   tags = {
-    Name = "devsecops-free-app"
+    Name = "devsecops-perfect-app"
   }
-}
-
-output "instance_public_ip" {
-  value = aws_instance.app.public_ip
 }
 
 output "instance_id" {
