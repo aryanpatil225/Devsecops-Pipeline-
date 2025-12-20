@@ -29,3 +29,4 @@ jenkins_home/
 
 # OS
 .DS_Store
+terraform/trivy
