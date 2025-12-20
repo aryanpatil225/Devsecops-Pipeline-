@@ -1,8 +1,8 @@
 provider "aws" {
-  region = "ap-south-1"  # Mumbai region - FREE tier eligible
+  region = "ap-south-1"
 }
 
-# VPC - FREE (unlimited)
+# VPC - FREE
 resource "aws_vpc" "main" {
   cidr_block = "10.123.0.0/16"
   tags = {
@@ -10,18 +10,18 @@ resource "aws_vpc" "main" {
   }
 }
 
-# Public Subnet - FREE (map_public_ip_on_launch=true for app access)
+# Public Subnet - FREE
 resource "aws_subnet" "public" {
   vpc_id                  = aws_vpc.main.id
   cidr_block              = "10.123.1.0/24"
   availability_zone       = "ap-south-1a"
-  map_public_ip_on_launch = true  # Required for public HTTP access (Trivy AVD-AWS-0164 warning expected)
+  map_public_ip_on_launch = true
   tags = {
     Name = "public-subnet-free"
   }
 }
 
-# Internet Gateway - FREE (unlimited)
+# Internet Gateway - FREE
 resource "aws_internet_gateway" "igw" {
   vpc_id = aws_vpc.main.id
   tags = {
@@ -29,7 +29,7 @@ resource "aws_internet_gateway" "igw" {
   }
 }
 
-# Route Table with public internet access - FREE
+# Route Table - FREE
 resource "aws_default_route_table" "main" {
   default_route_table_id = aws_vpc.main.default_route_table_id
   
@@ -39,33 +39,30 @@ resource "aws_default_route_table" "main" {
   }
 }
 
-# SECURE Security Group - NO SSH (Fixes AVD-AWS-0107)
+# FIXED Security Group - NO SSH + Restricted Egress
 resource "aws_security_group" "web_sg" {
   name        = "devsecops-sg-free"
   vpc_id      = aws_vpc.main.id
-  description = "Free tier secure SG - HTTP + FastAPI only"
+  description = "Secure SG - HTTP FastAPI only"
 
-  # HTTP port 80
   ingress {
-    description = "HTTP from anywhere"
+    description = "HTTP"
     from_port   = 80
     to_port     = 80
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  # FastAPI port 8000
   ingress {
-    description = "FastAPI app"
+    description = "FastAPI"
     from_port   = 8000
     to_port     = 8000
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  # FIXED: Restricted egress - HTTPS + HTTP only (Fixes AVD-AWS-0104)
   egress {
-    description = "HTTPS only"
+    description = "HTTPS"
     from_port   = 443
     to_port     = 443
     protocol    = "tcp"
@@ -73,7 +70,7 @@ resource "aws_security_group" "web_sg" {
   }
 
   egress {
-    description = "HTTP only" 
+    description = "HTTP"
     from_port   = 80
     to_port     = 80
     protocol    = "tcp"
@@ -85,25 +82,22 @@ resource "aws_security_group" "web_sg" {
   }
 }
 
-# FREE TIER t2.micro EC2 Instance (750 hours/month FREE)[web:15]
+# FREE TIER EC2 with ALL FIXES
 resource "aws_instance" "app" {
-  ami                    = "ami-0f5ee6cb1e35c1d3d"  # Amazon Linux 2023 FREE[web:16]
-  instance_type          = "t2.micro"              # FREE TIER (750 hrs/month)[web:15]
+  ami                    = "ami-0f5ee6cb1e35c1d3d"
+  instance_type          = "t2.micro"
   subnet_id              = aws_subnet.public.id
   vpc_security_group_ids = [aws_security_group.web_sg.id]
 
-  # FIXED: IMDSv2 required (Fixes AVD-AWS-0028)[web:17][web:22]
   metadata_options {
     http_tokens = "required"
   }
 
-  # FIXED: Encrypted root volume (Fixes AVD-AWS-0131) - FREE 20GB[web:18][web:23]
   root_block_device {
     encrypted   = true
-    volume_size = 20  # FREE tier EBS limit
+    volume_size = 20
   }
 
-  # User data: FastAPI app with Docker
   user_data = base64encode(<<-EOF
 #!/bin/bash
 dnf update -y
@@ -116,11 +110,11 @@ pip3 install fastapi uvicorn
 cat > app.py << 'APP'
 from fastapi import FastAPI
 app = FastAPI()
-@app.get("/") 
-def root(): 
-    return {"status": "🚀 DevSecOps FREE TIER App Live!", "secure": true}
-@app.get("/health") 
-def health(): 
+@app.get("/")
+def root():
+    return {"status": "DevSecOps FREE TIER App Live", "secure": True}
+@app.get("/health")
+def health():
     return {"status": "healthy"}
 APP
 nohup uvicorn app:app --host 0.0.0.0 --port 8000 &
@@ -132,7 +126,6 @@ EOF
   }
 }
 
-# Outputs
 output "instance_public_ip" {
   value = aws_instance.app.public_ip
 }
