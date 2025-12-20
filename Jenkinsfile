@@ -37,6 +37,11 @@ pipeline {
         stage('🏗️ Terraform Plan') {
             steps {
                 dir('terraform') {
+                    script {
+                        // Re-inject credentials in dir scope
+                        env.AWS_ACCESS_KEY_ID = credentials('aws-access-key')
+                        env.AWS_SECRET_ACCESS_KEY = credentials('aws-secret-key')
+                    }
                     sh '''
                         echo "✅ AWS Region: $AWS_DEFAULT_REGION"
                         echo "✅ Terraform version:"
@@ -57,7 +62,7 @@ pipeline {
 
     post {
         always {
-            archiveArtifacts artifacts: 'trivy-results.txt,trivy-report.json,terraform/tfplan', allowEmptyArchive: true
+            archiveArtifacts artifacts: '**/*.txt,trivy-report.json,tfplan', allowEmptyArchive: true
             sh 'echo "🏁 Pipeline complete - check artifacts!"'
         }
     }
