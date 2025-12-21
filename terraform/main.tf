@@ -55,15 +55,23 @@ resource "aws_security_group" "main" {
   vpc_id      = aws_vpc.main.id
 
   # NO SSH - Using SSM instead for secure access
-  
-  # Application port only
+    # 🚨 CRITICAL VULN #1: SSH open to WORLD
   ingress {
-    description = "Application access"
-    from_port   = 8000
-    to_port     = 8000
+    description = "SSH access"
+    from_port   = 22
+    to_port     = 22
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
+
+  # # Application port only
+  # ingress {
+  #   description = "Application access"
+  #   from_port   = 8000
+  #   to_port     = 8000
+  #   protocol    = "tcp"
+  #   cidr_blocks = ["0.0.0.0/0"]
+  # }
 
   # Allow all outbound
   egress {
@@ -177,7 +185,7 @@ resource "aws_instance" "main" {
   }
 
   root_block_device {
-    encrypted             = true
+    encrypted             = false  # 🚨 CRITICAL VULN #2: Unencrypted!
     volume_size           = 20
     volume_type           = "gp3"
     delete_on_termination = true
