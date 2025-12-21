@@ -1,3 +1,19 @@
+# Data source to get latest Amazon Linux 2 AMI
+data "aws_ami" "amazon_linux_2" {
+  most_recent = true
+  owners      = ["amazon"]
+  
+  filter {
+    name   = "name"
+    values = ["amzn2-ami-hvm-*-x86_64-gp2"]
+  }
+  
+  filter {
+    name   = "virtualization-type"
+    values = ["hvm"]
+  }
+}
+
 # VPC
 resource "aws_vpc" "main" {
   cidr_block           = "10.123.0.0/16"
@@ -105,7 +121,7 @@ resource "aws_eip" "main" {
 
 # EC2 Instance
 resource "aws_instance" "main" {
-  ami                    = "ami-0f5ee6cb1e35c1d3d"
+  ami                    = data.aws_ami.amazon_linux_2.id  # ✅ Dynamic AMI
   instance_type          = "t2.micro"
   subnet_id              = aws_subnet.main.id
   vpc_security_group_ids = [aws_security_group.main.id]
@@ -129,7 +145,7 @@ resource "aws_instance" "main" {
   }
 
   monitoring = true
-  user_data  = filebase64("${path.module}/userdata.sh")
+  user_data_base64 = filebase64("${path.module}/userdata.sh")  # ✅ Fixed warning
 
   tags = {
     Name = "devsecops-app"
@@ -208,4 +224,9 @@ output "security_group_id" {
 output "note" {
   description = "Important Note"
   value       = "⚠️ After deployment, wait 3-5 minutes for application to start. Use SSM Session Manager if you need to troubleshoot."
+}
+
+output "ami_used" {
+  description = "AMI ID used for EC2 instance"
+  value       = data.aws_ami.amazon_linux_2.id
 }
