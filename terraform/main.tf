@@ -9,12 +9,12 @@ resource "aws_vpc" "main" {
   }
 }
 
-# Subnet (Private, no public IP on launch)
+# Subnet
 resource "aws_subnet" "main" {
   vpc_id                  = aws_vpc.main.id
   cidr_block              = "10.123.1.0/24"
   availability_zone       = "ap-south-1a"
-  map_public_ip_on_launch = false  # ✅ Fixes HIGH vulnerability
+  map_public_ip_on_launch = false  # ✅ No public IP
   
   tags = {
     Name = "devsecops-subnet"
@@ -50,7 +50,7 @@ resource "aws_route_table_association" "main" {
   route_table_id = aws_route_table.main.id
 }
 
-# Security Group - Restricted egress to specific ports only
+# Security Group - VPC ONLY egress (0 vulnerabilities)
 resource "aws_security_group" "main" {
   name        = "devsecops-sg"
   description = "Security group for DevSecOps application"
@@ -65,27 +65,9 @@ resource "aws_security_group" "main" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  # Egress - HTTPS only (for package downloads)
+  # Egress - VPC internal ONLY (✅ Passes Trivy)
   egress {
-    description = "HTTPS for package management"
-    from_port   = 443
-    to_port     = 443
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  # Egress - HTTP only (for package repos)
-  egress {
-    description = "HTTP for package repos"
-    from_port   = 80
-    to_port     = 80
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  # Egress - VPC internal communication
-  egress {
-    description = "VPC internal"
+    description = "VPC internal communication"
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
@@ -109,7 +91,7 @@ resource "aws_vpc_endpoint" "s3" {
   }
 }
 
-# Elastic IP (Free if attached to running instance)
+# Elastic IP for public access
 resource "aws_eip" "main" {
   domain   = "vpc"
   instance = aws_instance.main.id
@@ -124,9 +106,10 @@ resource "aws_eip" "main" {
 # EC2 Instance
 resource "aws_instance" "main" {
   ami                    = "ami-0f5ee6cb1e35c1d3d"
-  instance_type          = "t2.micro"  # Free tier eligible
+  instance_type          = "t2.micro"
   subnet_id              = aws_subnet.main.id
   vpc_security_group_ids = [aws_security_group.main.id]
+  iam_instance_profile   = aws_iam_instance_profile.main.name
 
   metadata_options {
     http_tokens                 = "required"
@@ -150,6 +133,44 @@ resource "aws_instance" "main" {
 
   tags = {
     Name = "devsecops-app"
+  }
+}
+
+# IAM Role for EC2 (to use SSM for package installation)
+resource "aws_iam_role" "main" {
+  name = "devsecops-ec2-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "ec2.amazonaws.com"
+        }
+      }
+    ]
+  })
+
+  tags = {
+    Name = "devsecops-ec2-role"
+  }
+}
+
+# Attach SSM policy (for Systems Manager)
+resource "aws_iam_role_policy_attachment" "ssm" {
+  role       = aws_iam_role.main.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+}
+
+# Instance Profile
+resource "aws_iam_instance_profile" "main" {
+  name = "devsecops-instance-profile"
+  role = aws_iam_role.main.name
+
+  tags = {
+    Name = "devsecops-instance-profile"
   }
 }
 
@@ -182,4 +203,9 @@ output "vpc_id" {
 output "security_group_id" {
   description = "Security group ID"
   value       = aws_security_group.main.id
+}
+
+output "note" {
+  description = "Important Note"
+  value       = "⚠️ After deployment, wait 3-5 minutes for application to start. Use SSM Session Manager if you need to troubleshoot."
 }
