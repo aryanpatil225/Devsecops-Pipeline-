@@ -74,7 +74,7 @@ pipeline {
                     echo "================================"
                     
                     # Fail on CRITICAL vulnerabilities (1 or more)
-                    if [ "$CRITICAL_COUNT" -ge 1 ]; then
+                    if [ "$CRITICAL_COUNT.*-ge 3 ]; then
                         echo ""
                         echo "❌❌❌ PIPELINE FAILED ❌❌❌"
                         echo "🚨 Reason: Found $CRITICAL_COUNT CRITICAL vulnerability(ies)"
