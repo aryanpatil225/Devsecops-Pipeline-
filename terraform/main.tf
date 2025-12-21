@@ -1,4 +1,7 @@
-# VPC
+provider "aws" {
+  region = "ap-south-1"
+}
+
 resource "aws_vpc" "main" {
   cidr_block           = "10.123.0.0/16"
   enable_dns_hostnames = true
@@ -9,7 +12,6 @@ resource "aws_vpc" "main" {
   }
 }
 
-# Subnet
 resource "aws_subnet" "main" {
   vpc_id                  = aws_vpc.main.id
   cidr_block              = "10.123.1.0/24"
@@ -21,7 +23,6 @@ resource "aws_subnet" "main" {
   }
 }
 
-# Internet Gateway
 resource "aws_internet_gateway" "main" {
   vpc_id = aws_vpc.main.id
   
@@ -30,7 +31,6 @@ resource "aws_internet_gateway" "main" {
   }
 }
 
-# Route Table
 resource "aws_route_table" "main" {
   vpc_id = aws_vpc.main.id
   
@@ -44,19 +44,16 @@ resource "aws_route_table" "main" {
   }
 }
 
-# Route Table Association
 resource "aws_route_table_association" "main" {
   subnet_id      = aws_subnet.main.id
   route_table_id = aws_route_table.main.id
 }
 
-# Security Group with inline rules (avoids separate rule vulnerability)
 resource "aws_security_group" "main" {
   name        = "devsecops-sg"
   description = "Security group for DevSecOps application"
   vpc_id      = aws_vpc.main.id
 
-  # Ingress - Application port
   ingress {
     description = "Application access"
     from_port   = 8000
@@ -65,7 +62,6 @@ resource "aws_security_group" "main" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  # Egress - Restricted to VPC CIDR only
   egress {
     description = "Allow traffic within VPC"
     from_port   = 0
@@ -73,34 +69,24 @@ resource "aws_security_group" "main" {
     protocol    = "-1"
     cidr_blocks = ["10.123.0.0/16"]
   }
- #. Vulnerability test 
-#   egress {
-#   description = "Internet access"  # ← VULNERABLE
-#   from_port   = 0
-#   to_port     = 0
-#   protocol    = "-1"
-#   cidr_blocks = ["0.0.0.0/0"]     # ← CRITICAL: WORLD ACCESS
-# }
+
   tags = {
     Name = "devsecops-sg"
   }
 }
 
-# VPC Endpoint for S3 (allows EC2 to access AWS services without internet)
 resource "aws_vpc_endpoint" "s3" {
-  vpc_id       = aws_vpc.main.id
-  service_name = "com.amazonaws.ap-south-1.s3"
-  
-  route_table_ids = [aws_route_table.main.id]
+  vpc_id            = aws_vpc.main.id
+  service_name      = "com.amazonaws.ap-south-1.s3"
+  route_table_ids   = [aws_route_table.main.id]
 
   tags = {
     Name = "devsecops-s3-endpoint"
   }
 }
 
-# EC2 Instance
 resource "aws_instance" "main" {
-  ami                    = "ami-0c44f651ab5e9285f
+  ami                    = "ami-0c44f651ab5e9285f"
   instance_type          = "t2.micro"
   subnet_id              = aws_subnet.main.id
   vpc_security_group_ids = [aws_security_group.main.id]
@@ -116,22 +102,16 @@ resource "aws_instance" "main" {
     volume_size           = 20
     volume_type           = "gp3"
     delete_on_termination = true
-    
-    tags = {
-      Name = "devsecops-volume"
-    }
   }
 
   monitoring = true
-
-  user_data = filebase64("${path.module}/userdata.sh")
+  user_data   = filebase64("${path.module}/userdata.sh")
 
   tags = {
     Name = "devsecops-app"
   }
 }
 
-# Outputs
 output "instance_id" {
   description = "EC2 instance ID"
   value       = aws_instance.main.id
