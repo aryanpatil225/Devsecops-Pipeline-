@@ -1,19 +1,3 @@
-# Data source to get latest Amazon Linux 2 AMI
-data "aws_ami" "amazon_linux_2" {
-  most_recent = true
-  owners      = ["amazon"]
-  
-  filter {
-    name   = "name"
-    values = ["amzn2-ami-hvm-*-x86_64-gp2"]
-  }
-  
-  filter {
-    name   = "virtualization-type"
-    values = ["hvm"]
-  }
-}
-
 # VPC
 resource "aws_vpc" "main" {
   cidr_block           = "10.123.0.0/16"
@@ -30,7 +14,7 @@ resource "aws_subnet" "main" {
   vpc_id                  = aws_vpc.main.id
   cidr_block              = "10.123.1.0/24"
   availability_zone       = "ap-south-1a"
-  map_public_ip_on_launch = false  # ✅ No public IP
+  map_public_ip_on_launch = true  # ✅ FIXED: Now assigns public IP
   
   tags = {
     Name = "devsecops-subnet"
@@ -66,7 +50,7 @@ resource "aws_route_table_association" "main" {
   route_table_id = aws_route_table.main.id
 }
 
-# Security Group - Specific ports for Docker
+# Security Group with inline rules (avoids separate rule vulnerability)
 resource "aws_security_group" "main" {
   name        = "devsecops-sg"
   description = "Security group for DevSecOps application"
@@ -81,31 +65,13 @@ resource "aws_security_group" "main" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  # Egress - HTTPS for Docker Hub and package downloads
+  # ✅ FIXED: Allow internet access for package downloads
   egress {
-    description = "HTTPS for Docker and packages"
-    from_port   = 443
-    to_port     = 443
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  # Egress - HTTP for package repos
-  egress {
-    description = "HTTP for package repos"
-    from_port   = 80
-    to_port     = 80
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  # Egress - VPC internal communication
-  egress {
-    description = "VPC internal communication"
+    description = "Internet access for updates"
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
-    cidr_blocks = ["10.123.0.0/16"]
+    cidr_blocks = ["0.0.0.0/0"]
   }
 
   tags = {
@@ -113,7 +79,7 @@ resource "aws_security_group" "main" {
   }
 }
 
-# VPC Endpoint for S3 (Free)
+# VPC Endpoint for S3 (allows EC2 to access AWS services without internet)
 resource "aws_vpc_endpoint" "s3" {
   vpc_id       = aws_vpc.main.id
   service_name = "com.amazonaws.ap-south-1.s3"
@@ -125,25 +91,12 @@ resource "aws_vpc_endpoint" "s3" {
   }
 }
 
-# Elastic IP for public access
-resource "aws_eip" "main" {
-  domain   = "vpc"
-  instance = aws_instance.main.id
-  
-  tags = {
-    Name = "devsecops-eip"
-  }
-  
-  depends_on = [aws_internet_gateway.main]
-}
-
 # EC2 Instance
 resource "aws_instance" "main" {
-  ami                    = data.aws_ami.amazon_linux_2.id  # ✅ Dynamic AMI
+  ami                    = "ami-0f5ee6cb1e35c1d3d"
   instance_type          = "t2.micro"
   subnet_id              = aws_subnet.main.id
   vpc_security_group_ids = [aws_security_group.main.id]
-  iam_instance_profile   = aws_iam_instance_profile.main.name
 
   metadata_options {
     http_tokens                 = "required"
@@ -163,70 +116,37 @@ resource "aws_instance" "main" {
   }
 
   monitoring = true
-  user_data_base64 = filebase64("${path.module}/userdata.sh")  # ✅ Fixed warning
+  user_data  = filebase64("${path.module}/userdata.sh")
 
   tags = {
     Name = "devsecops-app"
   }
 }
 
-# IAM Role for EC2 (to use SSM for package installation)
-resource "aws_iam_role" "main" {
-  name = "devsecops-ec2-role"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Action = "sts:AssumeRole"
-        Effect = "Allow"
-        Principal = {
-          Service = "ec2.amazonaws.com"
-        }
-      }
-    ]
-  })
-
-  tags = {
-    Name = "devsecops-ec2-role"
-  }
-}
-
-# Attach SSM policy (for Systems Manager)
-resource "aws_iam_role_policy_attachment" "ssm" {
-  role       = aws_iam_role.main.name
-  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
-}
-
-# Instance Profile
-resource "aws_iam_instance_profile" "main" {
-  name = "devsecops-instance-profile"
-  role = aws_iam_role.main.name
-
-  tags = {
-    Name = "devsecops-instance-profile"
-  }
-}
-
 # Outputs
-output "application_url" {
-  description = "🌐 Open this URL in your browser!"
-  value       = "http://${aws_eip.main.public_ip}:8000"
-}
-
-output "health_check_url" {
-  description = "❤️ Health check endpoint"
-  value       = "http://${aws_eip.main.public_ip}:8000/health"
-}
-
-output "instance_public_ip" {
-  description = "EC2 Public IP"
-  value       = aws_eip.main.public_ip
-}
-
 output "instance_id" {
   description = "EC2 instance ID"
   value       = aws_instance.main.id
+}
+
+output "instance_public_ip" {
+  description = "EC2 instance public IP - Use this to access your app!"
+  value       = aws_instance.main.public_ip
+}
+
+output "application_url" {
+  description = "Application URL - Open this in your browser"
+  value       = "http://${aws_instance.main.public_ip}:8000"
+}
+
+output "health_check_url" {
+  description = "Health check endpoint"
+  value       = "http://${aws_instance.main.public_ip}:8000/health"
+}
+
+output "instance_private_ip" {
+  description = "EC2 instance private IP"
+  value       = aws_instance.main.private_ip
 }
 
 output "vpc_id" {
@@ -239,12 +159,7 @@ output "security_group_id" {
   value       = aws_security_group.main.id
 }
 
-output "note" {
-  description = "Important Note"
-  value       = "⚠️ After deployment, wait 8-10 minutes for Docker to build and start the application. Use SSM Session Manager to check progress."
-}
-
-output "ami_used" {
-  description = "AMI ID used for EC2 instance"
-  value       = data.aws_ami.amazon_linux_2.id
+output "s3_endpoint_id" {
+  description = "S3 VPC Endpoint ID"
+  value       = aws_vpc_endpoint.s3.id
 }

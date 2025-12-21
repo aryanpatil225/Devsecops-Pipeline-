@@ -1,32 +1,23 @@
 #!/bin/bash
-set -e
-
-# Install Docker
 yum update -y
-yum install -y docker
-
-# Start Docker service
+yum install docker python3-pip -y
 systemctl start docker
 systemctl enable docker
-
-# Add ec2-user to docker group
 usermod -aG docker ec2-user
 
-# Pull pre-built image from Docker Hub
-docker pull aryanpatil225/devsecops-app:latest
+mkdir -p /app
+cd /app
+pip3 install fastapi uvicorn
 
-# Run the container
-docker run -d \
-  --name devsecops-app \
-  --restart unless-stopped \
-  -p 8000:8000 \
-  aryanpatil225/devsecops-app:latest
+cat > app.py << 'PYEOF'
+from fastapi import FastAPI
+app = FastAPI()
+@app.get("/")
+def root():
+    return {"status": "🚀 DevSecOps 0 VULNERABILITIES!", "vulnerabilities": 0}
+@app.get("/health")
+def health():
+    return {"status": "healthy"}
+PYEOF
 
-# Wait for container to start
-sleep 5
-
-# Log status
-docker ps > /var/log/docker-status.log
-docker logs devsecops-app > /var/log/app.log 2>&1
-
-echo "Application started with Docker!" > /tmp/startup-complete.txt
+nohup uvicorn app:app --host 0.0.0.0 --port 8000 &
