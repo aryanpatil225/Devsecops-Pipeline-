@@ -43,15 +43,27 @@ pipeline {
                     cat trivy-results.txt
                     echo ""
                     
-                    # Count vulnerabilities and strip any whitespace/newlines
-                    CRITICAL_COUNT=$(grep -c "Severity: CRITICAL" trivy-results.txt 2>/dev/null | tr -d '\\n\\r\\t ' || echo "0")
-                    HIGH_COUNT=$(grep -c "Severity: HIGH" trivy-results.txt 2>/dev/null | tr -d '\\n\\r\\t ' || echo "0")
+                    # Count vulnerabilities using the correct pattern
+                    CRITICAL_COUNT=$(grep -o "CRITICAL: [0-9]*" trivy-results.txt | grep -o "[0-9]*" | head -1 | tr -d '\\n\\r\\t ' || echo "0")
+                    HIGH_COUNT=$(grep -o "HIGH: [0-9]*" trivy-results.txt | grep -o "[0-9]*" | head -1 | tr -d '\\n\\r\\t ' || echo "0")
                     
-                    # Ensure we have valid numbers (default to 0 if empty)
-                    if [ -z "$CRITICAL_COUNT" ]; then
+                    # Also check for vulnerability lines like "AVD-AWS-0104 (CRITICAL)"
+                    CRITICAL_VULN_COUNT=$(grep -c "(CRITICAL)" trivy-results.txt 2>/dev/null || echo "0")
+                    HIGH_VULN_COUNT=$(grep -c "(HIGH)" trivy-results.txt 2>/dev/null || echo "0")
+                    
+                    # Use the higher count from either method
+                    if [ "$CRITICAL_VULN_COUNT" -gt "$CRITICAL_COUNT" ]; then
+                        CRITICAL_COUNT=$CRITICAL_VULN_COUNT
+                    fi
+                    if [ "$HIGH_VULN_COUNT" -gt "$HIGH_COUNT" ]; then
+                        HIGH_COUNT=$HIGH_VULN_COUNT
+                    fi
+                    
+                    # Ensure we have valid numbers
+                    if [ -z "$CRITICAL_COUNT" ] || [ "$CRITICAL_COUNT" = "" ]; then
                         CRITICAL_COUNT=0
                     fi
-                    if [ -z "$HIGH_COUNT" ]; then
+                    if [ -z "$HIGH_COUNT" ] || [ "$HIGH_COUNT" = "" ]; then
                         HIGH_COUNT=0
                     fi
                     
@@ -97,13 +109,8 @@ pipeline {
         stage('🏗️ Terraform Plan') {
             steps {
                 dir('terraform') {
-                    script {
-                        env.AWS_ACCESS_KEY_ID = credentials('aws-access-key')
-                        env.AWS_SECRET_ACCESS_KEY = credentials('aws-secret-key')
-                    }
                     sh '''
                         echo "✅ AWS Region: $AWS_DEFAULT_REGION"
-                        echo "✅ Terraform version:"
                         terraform version
                         
                         echo "🔄 Initializing Terraform..."
@@ -137,13 +144,13 @@ pipeline {
     post {
         always {
             archiveArtifacts artifacts: '**/trivy-results.txt,**/trivy-report.json,terraform/tfplan', allowEmptyArchive: true
-            sh 'echo "🏁 Pipeline complete - check artifacts for reports!"'
+            sh 'echo "🏁 Pipeline complete!"'
         }
         success {
-            echo '✅✅✅ PIPELINE SUCCEEDED - All security checks passed!'
+            echo '✅ PIPELINE SUCCEEDED!'
         }
         failure {
-            echo '❌❌❌ PIPELINE FAILED - Security vulnerabilities detected or deployment error!'
+            echo '❌ PIPELINE FAILED!'
         }
     }
 }

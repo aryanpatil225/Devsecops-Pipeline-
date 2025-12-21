@@ -56,25 +56,42 @@ resource "aws_security_group" "main" {
   description = "Security group for DevSecOps application"
   vpc_id      = aws_vpc.main.id
 
-  ingress {
-    description = "Application access"
-    from_port   = 8000
-    to_port     = 8000
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  egress {
-    description = "All outbound traffic"
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
   tags = {
     Name = "devsecops-sg"
   }
+}
+
+# Security Group Ingress Rule - Application Port
+resource "aws_security_group_rule" "ingress_app" {
+  type              = "ingress"
+  description       = "Application access"
+  from_port         = 8000
+  to_port           = 8000
+  protocol          = "tcp"
+  cidr_blocks       = ["0.0.0.0/0"]
+  security_group_id = aws_security_group.main.id
+}
+
+# Security Group Egress Rule - HTTPS
+resource "aws_security_group_rule" "egress_https" {
+  type              = "egress"
+  description       = "HTTPS to AWS services"
+  from_port         = 443
+  to_port           = 443
+  protocol          = "tcp"
+  cidr_blocks       = ["0.0.0.0/0"]
+  security_group_id = aws_security_group.main.id
+}
+
+# Security Group Egress Rule - HTTP
+resource "aws_security_group_rule" "egress_http" {
+  type              = "egress"
+  description       = "HTTP for package downloads"
+  from_port         = 80
+  to_port           = 80
+  protocol          = "tcp"
+  cidr_blocks       = ["0.0.0.0/0"]
+  security_group_id = aws_security_group.main.id
 }
 
 # EC2 Instance
