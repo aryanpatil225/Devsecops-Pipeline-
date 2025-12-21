@@ -1,4 +1,3 @@
-
 # VPC
 resource "aws_vpc" "main" {
   cidr_block           = "10.123.0.0/16"
@@ -51,48 +50,45 @@ resource "aws_route_table_association" "main" {
   route_table_id = aws_route_table.main.id
 }
 
-# Security Group
+# Security Group with inline rules (avoids separate rule vulnerability)
 resource "aws_security_group" "main" {
   name        = "devsecops-sg"
   description = "Security group for DevSecOps application"
   vpc_id      = aws_vpc.main.id
+
+  # Ingress - Application port
+  ingress {
+    description = "Application access"
+    from_port   = 8000
+    to_port     = 8000
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  # Egress - Restricted to VPC CIDR only
+  egress {
+  description = "Internet access"  # ← VULNERABLE
+  from_port   = 0
+  to_port     = 0
+  protocol    = "-1"
+  cidr_blocks = ["0.0.0.0/0"]     # ← CRITICAL: WORLD ACCESS
+}
 
   tags = {
     Name = "devsecops-sg"
   }
 }
 
-# Security Group Ingress Rule - Application Port
-resource "aws_security_group_rule" "ingress_app" {
-  type              = "ingress"
-  description       = "Application access"
-  from_port         = 8000
-  to_port           = 8000
-  protocol          = "tcp"
-  cidr_blocks       = ["0.0.0.0/0"]
-  security_group_id = aws_security_group.main.id
-}
+# VPC Endpoint for S3 (allows EC2 to access AWS services without internet)
+resource "aws_vpc_endpoint" "s3" {
+  vpc_id       = aws_vpc.main.id
+  service_name = "com.amazonaws.ap-south-1.s3"
+  
+  route_table_ids = [aws_route_table.main.id]
 
-# Security Group Egress Rule - HTTPS
-resource "aws_security_group_rule" "egress_https" {
-  type              = "egress"
-  description       = "HTTPS to AWS services"
-  from_port         = 443
-  to_port           = 443
-  protocol          = "tcp"
-  cidr_blocks       = ["0.0.0.0/0"]
-  security_group_id = aws_security_group.main.id
-}
-
-# Security Group Egress Rule - HTTP
-resource "aws_security_group_rule" "egress_http" {
-  type              = "egress"
-  description       = "HTTP for package downloads"
-  from_port         = 80
-  to_port           = 80
-  protocol          = "tcp"
-  cidr_blocks       = ["0.0.0.0/0"]
-  security_group_id = aws_security_group.main.id
+  tags = {
+    Name = "devsecops-s3-endpoint"
+  }
 }
 
 # EC2 Instance
@@ -147,4 +143,9 @@ output "vpc_id" {
 output "security_group_id" {
   description = "Security group ID"
   value       = aws_security_group.main.id
+}
+
+output "s3_endpoint_id" {
+  description = "S3 VPC Endpoint ID"
+  value       = aws_vpc_endpoint.s3.id
 }
