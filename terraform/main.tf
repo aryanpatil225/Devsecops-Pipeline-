@@ -14,7 +14,7 @@ resource "aws_subnet" "main" {
   vpc_id                  = aws_vpc.main.id
   cidr_block              = "10.123.1.0/24"
   availability_zone       = "ap-south-1a"
-  map_public_ip_on_launch = false
+  map_public_ip_on_launch = true  # ✅ FIXED: Now assigns public IP
   
   tags = {
     Name = "devsecops-subnet"
@@ -65,21 +65,14 @@ resource "aws_security_group" "main" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  # # Egress - Restricted to VPC CIDR only
-  # egress {
-  # description = "Internet access"  # ← VULNERABLE
-  # from_port   = 0
-  # to_port     = 0
-  # protocol    = "-1"
-  # cidr_blocks = ["0.0.0.0/0"]     # ← CRITICAL: WORLD ACCESS
-#}
-egress {
-  description = "VPC internal only"
-  from_port   = 0
-  to_port     = 0
-  protocol    = "-1"
-  cidr_blocks = ["10.123.0.0/16"]  # ✅ VPC ONLY
-}
+  # ✅ FIXED: Allow internet access for package downloads
+  egress {
+    description = "Internet access for updates"
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
 
   tags = {
     Name = "devsecops-sg"
@@ -92,7 +85,7 @@ resource "aws_vpc_endpoint" "s3" {
   service_name = "com.amazonaws.ap-south-1.s3"
   
   route_table_ids = [aws_route_table.main.id]
-
+  
   tags = {
     Name = "devsecops-s3-endpoint"
   }
@@ -123,8 +116,7 @@ resource "aws_instance" "main" {
   }
 
   monitoring = true
-
-  user_data = filebase64("${path.module}/userdata.sh")
+  user_data  = filebase64("${path.module}/userdata.sh")
 
   tags = {
     Name = "devsecops-app"
@@ -135,6 +127,21 @@ resource "aws_instance" "main" {
 output "instance_id" {
   description = "EC2 instance ID"
   value       = aws_instance.main.id
+}
+
+output "instance_public_ip" {
+  description = "EC2 instance public IP - Use this to access your app!"
+  value       = aws_instance.main.public_ip
+}
+
+output "application_url" {
+  description = "Application URL - Open this in your browser"
+  value       = "http://${aws_instance.main.public_ip}:8000"
+}
+
+output "health_check_url" {
+  description = "Health check endpoint"
+  value       = "http://${aws_instance.main.public_ip}:8000/health"
 }
 
 output "instance_private_ip" {
