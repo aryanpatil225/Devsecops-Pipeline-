@@ -67,13 +67,20 @@ resource "aws_security_group" "main" {
 
   # Egress - Restricted to VPC CIDR only
   egress {
-  description = "Internet access"  # ← VULNERABLE
-  from_port   = 0
-  to_port     = 0
-  protocol    = "-1"
-  cidr_blocks = ["0.0.0.0/0"]     # ← CRITICAL: WORLD ACCESS
-}
-
+    description = "Allow traffic within VPC"
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["10.123.0.0/16"]
+  }
+ #. Vulnerability test 
+#   egress {
+#   description = "Internet access"  # ← VULNERABLE
+#   from_port   = 0
+#   to_port     = 0
+#   protocol    = "-1"
+#   cidr_blocks = ["0.0.0.0/0"]     # ← CRITICAL: WORLD ACCESS
+# }
   tags = {
     Name = "devsecops-sg"
   }
