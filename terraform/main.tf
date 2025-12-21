@@ -66,7 +66,7 @@ resource "aws_route_table_association" "main" {
   route_table_id = aws_route_table.main.id
 }
 
-# Security Group - VPC ONLY egress (0 vulnerabilities)
+# Security Group - Specific ports for Docker
 resource "aws_security_group" "main" {
   name        = "devsecops-sg"
   description = "Security group for DevSecOps application"
@@ -81,7 +81,25 @@ resource "aws_security_group" "main" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  # Egress - VPC internal ONLY (✅ Passes Trivy)
+  # Egress - HTTPS for Docker Hub and package downloads
+  egress {
+    description = "HTTPS for Docker and packages"
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  # Egress - HTTP for package repos
+  egress {
+    description = "HTTP for package repos"
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  # Egress - VPC internal communication
   egress {
     description = "VPC internal communication"
     from_port   = 0
@@ -223,7 +241,7 @@ output "security_group_id" {
 
 output "note" {
   description = "Important Note"
-  value       = "⚠️ After deployment, wait 3-5 minutes for application to start. Use SSM Session Manager if you need to troubleshoot."
+  value       = "⚠️ After deployment, wait 8-10 minutes for Docker to build and start the application. Use SSM Session Manager to check progress."
 }
 
 output "ami_used" {
