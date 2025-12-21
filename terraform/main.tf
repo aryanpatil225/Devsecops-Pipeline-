@@ -1,23 +1,27 @@
+# Provider
+provider "aws" {
+  region = var.region
+}
+
+# Data source for latest Amazon Linux 2 AMI
+data "aws_ami" "amazon_linux_2" {
+  most_recent = true
+  owners      = ["amazon"]
+  
+  filter {
+    name   = "name"
+    values = ["amzn2-ami-hvm-*-x86_64-gp2"]
+  }
+}
+
 # VPC
 resource "aws_vpc" "main" {
-  cidr_block           = "10.123.0.0/16"
+  cidr_block           = "10.0.0.0/16"
   enable_dns_hostnames = true
   enable_dns_support   = true
   
   tags = {
     Name = "devsecops-vpc"
-  }
-}
-
-# Subnet
-resource "aws_subnet" "main" {
-  vpc_id                  = aws_vpc.main.id
-  cidr_block              = "10.123.1.0/24"
-  availability_zone       = "ap-south-1a"
-  map_public_ip_on_launch = true  # ✅ FIXED: Now assigns public IP
-  
-  tags = {
-    Name = "devsecops-subnet"
   }
 }
 
@@ -30,8 +34,20 @@ resource "aws_internet_gateway" "main" {
   }
 }
 
+# Public Subnet
+resource "aws_subnet" "public" {
+  vpc_id                  = aws_vpc.main.id
+  cidr_block              = "10.0.1.0/24"
+  availability_zone       = "${var.region}a"
+  map_public_ip_on_launch = true
+  
+  tags = {
+    Name = "devsecops-public-subnet"
+  }
+}
+
 # Route Table
-resource "aws_route_table" "main" {
+resource "aws_route_table" "public" {
   vpc_id = aws_vpc.main.id
   
   route {
@@ -40,83 +56,74 @@ resource "aws_route_table" "main" {
   }
   
   tags = {
-    Name = "devsecops-rt"
+    Name = "devsecops-public-rt"
   }
 }
 
 # Route Table Association
-resource "aws_route_table_association" "main" {
-  subnet_id      = aws_subnet.main.id
-  route_table_id = aws_route_table.main.id
+resource "aws_route_table_association" "public" {
+  subnet_id      = aws_subnet.public.id
+  route_table_id = aws_route_table.public.id
 }
 
-# Security Group with inline rules (avoids separate rule vulnerability)
-resource "aws_security_group" "main" {
-  name        = "devsecops-sg"
+# Security Group
+resource "aws_security_group" "app" {
+  name        = "devsecops-app-sg"
   description = "Security group for DevSecOps application"
   vpc_id      = aws_vpc.main.id
 
-  # Ingress - Application port
+  # Allow inbound HTTP on port 8000
   ingress {
-    description = "Application access"
+    description = "Application port"
     from_port   = 8000
     to_port     = 8000
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  # ✅ FIXED: Allow internet access for package downloads
+  # Allow outbound HTTPS (for Docker Hub)
   egress {
-    description = "Internet access for updates"
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
+    description = "HTTPS for Docker Hub"
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  # Allow outbound HTTP (for package repos)
+  egress {
+    description = "HTTP for packages"
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
 
   tags = {
-    Name = "devsecops-sg"
-  }
-}
-
-# VPC Endpoint for S3 (allows EC2 to access AWS services without internet)
-resource "aws_vpc_endpoint" "s3" {
-  vpc_id       = aws_vpc.main.id
-  service_name = "com.amazonaws.ap-south-1.s3"
-  
-  route_table_ids = [aws_route_table.main.id]
-  
-  tags = {
-    Name = "devsecops-s3-endpoint"
+    Name = "devsecops-app-sg"
   }
 }
 
 # EC2 Instance
-resource "aws_instance" "main" {
-  ami                    = "ami-0f5ee6cb1e35c1d3d"
+resource "aws_instance" "app" {
+  ami                    = data.aws_ami.amazon_linux_2.id
   instance_type          = "t2.micro"
-  subnet_id              = aws_subnet.main.id
-  vpc_security_group_ids = [aws_security_group.main.id]
-
-  metadata_options {
-    http_tokens                 = "required"
-    http_put_response_hop_limit = 1
-    http_endpoint               = "enabled"
-  }
+  subnet_id              = aws_subnet.public.id
+  vpc_security_group_ids = [aws_security_group.app.id]
+  
+  user_data = base64encode(file("${path.module}/userdata.sh"))
 
   root_block_device {
-    encrypted             = true
     volume_size           = 20
     volume_type           = "gp3"
+    encrypted             = true
     delete_on_termination = true
-    
-    tags = {
-      Name = "devsecops-volume"
-    }
   }
 
-  monitoring = true
-  user_data  = filebase64("${path.module}/userdata.sh")
+  metadata_options {
+    http_tokens   = "required"
+    http_endpoint = "enabled"
+  }
 
   tags = {
     Name = "devsecops-app"
@@ -124,42 +131,17 @@ resource "aws_instance" "main" {
 }
 
 # Outputs
-output "instance_id" {
-  description = "EC2 instance ID"
-  value       = aws_instance.main.id
-}
-
-output "instance_public_ip" {
-  description = "EC2 instance public IP - Use this to access your app!"
-  value       = aws_instance.main.public_ip
-}
-
 output "application_url" {
-  description = "Application URL - Open this in your browser"
-  value       = "http://${aws_instance.main.public_ip}:8000"
+  description = "Application URL"
+  value       = "http://${aws_instance.app.public_ip}:8000"
 }
 
-output "health_check_url" {
-  description = "Health check endpoint"
-  value       = "http://${aws_instance.main.public_ip}:8000/health"
+output "public_ip" {
+  description = "EC2 Public IP"
+  value       = aws_instance.app.public_ip
 }
 
-output "instance_private_ip" {
-  description = "EC2 instance private IP"
-  value       = aws_instance.main.private_ip
-}
-
-output "vpc_id" {
-  description = "VPC ID"
-  value       = aws_vpc.main.id
-}
-
-output "security_group_id" {
-  description = "Security group ID"
-  value       = aws_security_group.main.id
-}
-
-output "s3_endpoint_id" {
-  description = "S3 VPC Endpoint ID"
-  value       = aws_vpc_endpoint.s3.id
+output "instance_id" {
+  description = "EC2 Instance ID"
+  value       = aws_instance.app.id
 }
