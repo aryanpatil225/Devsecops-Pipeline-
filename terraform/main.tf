@@ -1,17 +1,4 @@
-terraform {
-  required_version = ">= 1.0"
-  required_providers {
-    aws = {
-      source  = "hashicorp/aws"
-      version = "~> 5.0"
-    }
-  }
-}
-
-provider "aws" {
-  region = "ap-south-1"
-}
-
+# VPC
 resource "aws_vpc" "main" {
   cidr_block           = "10.123.0.0/16"
   enable_dns_hostnames = true
@@ -22,18 +9,20 @@ resource "aws_vpc" "main" {
   }
 }
 
-resource "aws_subnet" "app_subnet" {
+# Subnet
+resource "aws_subnet" "main" {
   vpc_id                  = aws_vpc.main.id
   cidr_block              = "10.123.1.0/24"
   availability_zone       = "ap-south-1a"
   map_public_ip_on_launch = false
   
   tags = {
-    Name = "secure-private-subnet"
+    Name = "devsecops-subnet"
   }
 }
 
-resource "aws_internet_gateway" "igw" {
+# Internet Gateway
+resource "aws_internet_gateway" "main" {
   vpc_id = aws_vpc.main.id
   
   tags = {
@@ -41,31 +30,34 @@ resource "aws_internet_gateway" "igw" {
   }
 }
 
-resource "aws_route_table" "public" {
+# Route Table
+resource "aws_route_table" "main" {
   vpc_id = aws_vpc.main.id
   
   route {
     cidr_block = "0.0.0.0/0"
-    gateway_id = aws_internet_gateway.igw.id
+    gateway_id = aws_internet_gateway.main.id
   }
   
   tags = {
-    Name = "public-rt"
+    Name = "devsecops-rt"
   }
 }
 
-resource "aws_route_table_association" "a" {
-  subnet_id      = aws_subnet.app_subnet.id
-  route_table_id = aws_route_table.public.id
+# Route Table Association
+resource "aws_route_table_association" "main" {
+  subnet_id      = aws_subnet.main.id
+  route_table_id = aws_route_table.main.id
 }
 
-resource "aws_security_group" "app" {
-  name        = "devsecops-secure"
+# Security Group
+resource "aws_security_group" "main" {
+  name        = "devsecops-sg"
   description = "Security group for DevSecOps application"
   vpc_id      = aws_vpc.main.id
 
   ingress {
-    description = "Application port access"
+    description = "Application access"
     from_port   = 8000
     to_port     = 8000
     protocol    = "tcp"
@@ -73,7 +65,7 @@ resource "aws_security_group" "app" {
   }
 
   egress {
-    description = "Allow all outbound traffic"
+    description = "All outbound traffic"
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
@@ -81,15 +73,16 @@ resource "aws_security_group" "app" {
   }
 
   tags = {
-    Name = "devsecops-secure"
+    Name = "devsecops-sg"
   }
 }
 
-resource "aws_instance" "app" {
+# EC2 Instance
+resource "aws_instance" "main" {
   ami                    = "ami-0f5ee6cb1e35c1d3d"
   instance_type          = "t2.micro"
-  subnet_id              = aws_subnet.app_subnet.id
-  vpc_security_group_ids = [aws_security_group.app.id]
+  subnet_id              = aws_subnet.main.id
+  vpc_security_group_ids = [aws_security_group.main.id]
 
   metadata_options {
     http_tokens                 = "required"
@@ -104,7 +97,7 @@ resource "aws_instance" "app" {
     delete_on_termination = true
     
     tags = {
-      Name = "devsecops-root-volume"
+      Name = "devsecops-volume"
     }
   }
 
@@ -113,32 +106,27 @@ resource "aws_instance" "app" {
   user_data = filebase64("${path.module}/userdata.sh")
 
   tags = {
-    Name        = "devsecops-secure-app"
-    Environment = "production"
-    ManagedBy   = "terraform"
+    Name = "devsecops-app"
   }
 }
 
-resource "aws_cloudwatch_log_group" "app_logs" {
-  name              = "/aws/ec2/devsecops-app"
-  retention_in_days = 7
-  
-  tags = {
-    Name = "devsecops-app-logs"
-  }
-}
-
+# Outputs
 output "instance_id" {
-  description = "ID of the EC2 instance"
-  value       = aws_instance.app.id
+  description = "EC2 instance ID"
+  value       = aws_instance.main.id
+}
+
+output "instance_private_ip" {
+  description = "EC2 instance private IP"
+  value       = aws_instance.main.private_ip
 }
 
 output "vpc_id" {
-  description = "ID of the VPC"
+  description = "VPC ID"
   value       = aws_vpc.main.id
 }
 
 output "security_group_id" {
-  description = "ID of the security group"
-  value       = aws_security_group.app.id
+  description = "Security group ID"
+  value       = aws_security_group.main.id
 }

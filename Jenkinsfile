@@ -6,6 +6,19 @@ pipeline {
         AWS_DEFAULT_REGION = 'ap-south-1'
     }
     stages {
+        stage('🧹 Clean Workspace') {
+            steps {
+                sh '''
+                    echo "🧹 Cleaning workspace and removing old cache..."
+                    rm -rf .terraform terraform/.terraform
+                    rm -f terraform/.terraform.lock.hcl
+                    rm -f trivy-results.txt trivy-report.json
+                    rm -f terraform/tfplan
+                    echo "✅ Workspace cleaned!"
+                '''
+            }
+        }
+        
         stage('🚀 Checkout') {
             steps {
                 git branch: 'main',
@@ -21,7 +34,6 @@ pipeline {
                     curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
                     
                     echo "🚨 SCANNING TERRAFORM CONFIGURATION FILES..."
-                    # Scan the actual .tf files, not tfplan binary
                     trivy config --severity HIGH,CRITICAL --exit-code 0 terraform/ > trivy-results.txt 2>&1
                     
                     echo "📊 Generating JSON report..."
@@ -29,27 +41,31 @@ pipeline {
                     
                     echo "📋 Trivy Scan Results:"
                     cat trivy-results.txt
-                    
                     echo ""
-                    echo "🔢 Parsing Vulnerability Counts..."
                     
-                    # Count CRITICAL vulnerabilities
-                    CRITICAL_COUNT=$(grep -c "Severity: CRITICAL" trivy-results.txt 2>/dev/null || echo "0")
+                    # Count vulnerabilities and strip any whitespace/newlines
+                    CRITICAL_COUNT=$(grep -c "Severity: CRITICAL" trivy-results.txt 2>/dev/null | tr -d '\\n\\r\\t ' || echo "0")
+                    HIGH_COUNT=$(grep -c "Severity: HIGH" trivy-results.txt 2>/dev/null | tr -d '\\n\\r\\t ' || echo "0")
                     
-                    # Count HIGH vulnerabilities
-                    HIGH_COUNT=$(grep -c "Severity: HIGH" trivy-results.txt 2>/dev/null || echo "0")
+                    # Ensure we have valid numbers (default to 0 if empty)
+                    if [ -z "$CRITICAL_COUNT" ]; then
+                        CRITICAL_COUNT=0
+                    fi
+                    if [ -z "$HIGH_COUNT" ]; then
+                        HIGH_COUNT=0
+                    fi
                     
                     echo "================================"
                     echo "📊 VULNERABILITY SUMMARY:"
                     echo "   🔴 CRITICAL: $CRITICAL_COUNT"
-                    echo "   🟠 HIGH:     $HIGH_COUNT"
+                    echo "   🟠 HIGH: $HIGH_COUNT"
                     echo "================================"
                     
-                    # 🚨 STRICT FAILURE CRITERIA
+                    # Fail on CRITICAL vulnerabilities (1 or more)
                     if [ "$CRITICAL_COUNT" -ge 1 ]; then
                         echo ""
                         echo "❌❌❌ PIPELINE FAILED ❌❌❌"
-                        echo "🚨 Reason: Found $CRITICAL_COUNT CRITICAL vulnerabilities"
+                        echo "🚨 Reason: Found $CRITICAL_COUNT CRITICAL vulnerability(ies)"
                         echo "🔒 Policy: ANY CRITICAL vulnerability blocks deployment"
                         echo ""
                         echo "📋 Full Security Report:"
@@ -57,10 +73,11 @@ pipeline {
                         exit 1
                     fi
                     
+                    # Fail on HIGH vulnerabilities (2 or more)
                     if [ "$HIGH_COUNT" -ge 2 ]; then
                         echo ""
                         echo "❌❌❌ PIPELINE FAILED ❌❌❌"
-                        echo "🚨 Reason: Found $HIGH_COUNT HIGH vulnerabilities"
+                        echo "🚨 Reason: Found $HIGH_COUNT HIGH vulnerability(ies)"
                         echo "🔒 Policy: 2 or more HIGH vulnerabilities block deployment"
                         echo ""
                         echo "📋 Full Security Report:"
