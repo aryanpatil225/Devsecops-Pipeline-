@@ -100,7 +100,7 @@ resource "aws_vpc_endpoint" "s3" {
 
 # EC2 Instance
 resource "aws_instance" "main" {
-  ami                    = "ami-0d3a2273b8d7f8a6d"
+  ami                    = "ami-0c44f651ab5e9285f
   instance_type          = "t2.micro"
   subnet_id              = aws_subnet.main.id
   vpc_security_group_ids = [aws_security_group.main.id]
