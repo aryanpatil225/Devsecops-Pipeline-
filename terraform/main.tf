@@ -49,6 +49,7 @@ resource "aws_route_table_association" "main" {
   route_table_id = aws_route_table.main.id
 }
 
+# CHANGED: Updated egress to allow internet access (needed for package downloads)
 resource "aws_security_group" "main" {
   name        = "devsecops-sg"
   description = "Security group for DevSecOps application"
@@ -63,11 +64,11 @@ resource "aws_security_group" "main" {
   }
 
   egress {
-    description = "Allow traffic within VPC"
+    description = "Allow all outbound traffic for package downloads"
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
-    cidr_blocks = ["10.123.0.0/16"]
+    cidr_blocks = ["0.0.0.0/0"]  # CHANGED: was ["10.123.0.0/16"]
   }
 
   tags = {
@@ -112,6 +113,18 @@ resource "aws_instance" "main" {
   }
 }
 
+# NEW: Elastic IP for public access
+resource "aws_eip" "main" {
+  instance = aws_instance.main.id
+  domain   = "vpc"
+
+  tags = {
+    Name = "devsecops-eip"
+  }
+
+  depends_on = [aws_internet_gateway.main]
+}
+
 output "instance_id" {
   description = "EC2 instance ID"
   value       = aws_instance.main.id
@@ -120,6 +133,18 @@ output "instance_id" {
 output "instance_private_ip" {
   description = "EC2 instance private IP"
   value       = aws_instance.main.private_ip
+}
+
+# NEW: Public IP output
+output "instance_public_ip" {
+  description = "EC2 instance public IP (Elastic IP)"
+  value       = aws_eip.main.public_ip
+}
+
+# NEW: Direct application URL
+output "application_url" {
+  description = "Application URL - Open this in browser"
+  value       = "http://${aws_eip.main.public_ip}:8000"
 }
 
 output "vpc_id" {
