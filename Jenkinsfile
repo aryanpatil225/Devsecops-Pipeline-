@@ -34,37 +34,35 @@ pipeline {
                     curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
                     
                     echo "🚨 SCANNING TERRAFORM CONFIGURATION FILES..."
-                    trivy config --severity HIGH,CRITICAL --exit-code 0 terraform/ > trivy-results.txt 2>&1
+                    # Scan the terraform directory with explicit format
+                    trivy config --severity HIGH,CRITICAL --exit-code 0 --format table terraform/ > trivy-results.txt 2>&1
                     
                     echo "📊 Generating JSON report..."
-                    trivy config --format json --output trivy-report.json terraform/
+                    trivy config --severity HIGH,CRITICAL --format json --output trivy-report.json terraform/
                     
                     echo "📋 Trivy Scan Results:"
                     cat trivy-results.txt
                     echo ""
+                    echo "================================"
                     
-                    # Count vulnerabilities using the correct pattern
-                    CRITICAL_COUNT=$(grep -o "CRITICAL: [0-9]*" trivy-results.txt | grep -o "[0-9]*" | head -1 | tr -d '\\n\\r\\t ' || echo "0")
-                    HIGH_COUNT=$(grep -o "HIGH: [0-9]*" trivy-results.txt | grep -o "[0-9]*" | head -1 | tr -d '\\n\\r\\t ' || echo "0")
+                    # Parse the Failures line directly from summary
+                    # Example: "Failures: 3 (HIGH: 0, CRITICAL: 3)"
+                    FAILURES_LINE=$(grep "Failures:" trivy-results.txt | head -1)
+                    echo "Debug - Failures line: $FAILURES_LINE"
                     
-                    # Also check for vulnerability lines like "AVD-AWS-0104 (CRITICAL)"
-                    CRITICAL_VULN_COUNT=$(grep -c "(CRITICAL)" trivy-results.txt 2>/dev/null || echo "0")
-                    HIGH_VULN_COUNT=$(grep -c "(HIGH)" trivy-results.txt 2>/dev/null || echo "0")
+                    # Extract CRITICAL count
+                    CRITICAL_COUNT=$(echo "$FAILURES_LINE" | grep -oP "CRITICAL: \\K[0-9]+" || echo "0")
                     
-                    # Use the higher count from either method
-                    if [ "$CRITICAL_VULN_COUNT" -gt "$CRITICAL_COUNT" ]; then
-                        CRITICAL_COUNT=$CRITICAL_VULN_COUNT
+                    # Extract HIGH count  
+                    HIGH_COUNT=$(echo "$FAILURES_LINE" | grep -oP "HIGH: \\K[0-9]+" || echo "0")
+                    
+                    # Fallback: Count individual vulnerability occurrences
+                    if [ "$CRITICAL_COUNT" = "0" ]; then
+                        CRITICAL_COUNT=$(grep -c "(CRITICAL)" trivy-results.txt 2>/dev/null || echo "0")
                     fi
-                    if [ "$HIGH_VULN_COUNT" -gt "$HIGH_COUNT" ]; then
-                        HIGH_COUNT=$HIGH_VULN_COUNT
-                    fi
                     
-                    # Ensure we have valid numbers
-                    if [ -z "$CRITICAL_COUNT" ] || [ "$CRITICAL_COUNT" = "" ]; then
-                        CRITICAL_COUNT=0
-                    fi
-                    if [ -z "$HIGH_COUNT" ] || [ "$HIGH_COUNT" = "" ]; then
-                        HIGH_COUNT=0
+                    if [ "$HIGH_COUNT" = "0" ]; then
+                        HIGH_COUNT=$(grep -c "(HIGH)" trivy-results.txt 2>/dev/null || echo "0")
                     fi
                     
                     echo "================================"
@@ -80,8 +78,8 @@ pipeline {
                         echo "🚨 Reason: Found $CRITICAL_COUNT CRITICAL vulnerability(ies)"
                         echo "🔒 Policy: ANY CRITICAL vulnerability blocks deployment"
                         echo ""
-                        echo "📋 Full Security Report:"
-                        cat trivy-results.txt
+                        echo "📋 Detected Vulnerabilities:"
+                        grep -A 5 "CRITICAL" trivy-results.txt | head -50
                         exit 1
                     fi
                     
@@ -92,8 +90,8 @@ pipeline {
                         echo "🚨 Reason: Found $HIGH_COUNT HIGH vulnerability(ies)"
                         echo "🔒 Policy: 2 or more HIGH vulnerabilities block deployment"
                         echo ""
-                        echo "📋 Full Security Report:"
-                        cat trivy-results.txt
+                        echo "📋 Detected Vulnerabilities:"
+                        grep -A 5 "HIGH" trivy-results.txt | head -50
                         exit 1
                     fi
                     
