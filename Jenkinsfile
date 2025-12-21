@@ -32,59 +32,35 @@ pipeline {
             echo "🔧 Installing Trivy..."
             curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
             
-            echo "🔄 Terraform Plan for Security Scan..."
-            cd terraform
-            terraform init
-            terraform plan -out=tfplan-security
+            echo "🚨 SCANNING TERRAFORM CONFIG..."
+            trivy config --severity HIGH,CRITICAL --exit-code 0 terraform/ > trivy-results.txt 2>&1
             
-            cd ..
-            echo "🚨 SCANNING tfplan..."
-            trivy config --severity HIGH,CRITICAL terraform/tfplan-security > trivy-results.txt 2>&1
+            echo "📊 JSON report..."
+            trivy config --format json --output trivy-report.json terraform/
             
-            echo "📊 Generating JSON report..."
-            trivy config --format json --output trivy-report.json terraform/tfplan-security
-            
-            echo "📋 Trivy Scan Results:"
+            echo "📋 Trivy Results:"
             cat trivy-results.txt
-            echo ""
             
-            # FIXED PARSING - Robust regex
-            CRITICAL_COUNT=$(grep -oP "CRITICAL:\\s*\\\\K\\\\d+" trivy-results.txt | head -1 || echo 0)
-            HIGH_COUNT=$(grep -oP "HIGH:\\s*\\\\K\\\\d+" trivy-results.txt | head -1 || echo 0)
+            # FIXED PARSING - Matches your Trivy output
+            CRITICAL_COUNT=$(grep -o "CRITICAL: [0-9]*" trivy-results.txt | grep -o "[0-9]*" | head -1 | tr -d '\\n\\r\\t ' || echo 0)
+            HIGH_COUNT=$(grep -o "HIGH: [0-9]*" trivy-results.txt | grep -o "[0-9]*" | head -1 | tr -d '\\n\\r\\t ' || echo 0)
             
             echo "================================"
-            echo "📊 VULNERABILITY SUMMARY:"
-            echo "   🔴 CRITICAL: $CRITICAL_COUNT"
-            echo "   🟠 HIGH: $HIGH_COUNT"
+            echo "📊 SUMMARY: CRIT=$CRITICAL_COUNT HIGH=$HIGH_COUNT"
             echo "================================"
             
-            # ALLOW 2 CRIT for Docker ports 80/443
-            if [ "$CRITICAL_COUNT" -ge 3 ]; then
-                echo ""
+            # ALLOW 2 CRIT for Docker 80/443
+            if [ "$CRITICAL_COUNT" -ge 3 ] || [ "$HIGH_COUNT" -ge 2 ]; then
                 echo "❌❌❌ PIPELINE FAILED ❌❌❌"
-                echo "🚨 Reason: Found $CRITICAL_COUNT CRITICAL vulnerability(ies)"
-                echo "🔒 Policy: 3+ CRITICAL blocks deployment"
-                cat trivy-results.txt
+                echo "CRIT: $CRITICAL_COUNT (max 2) HIGH: $HIGH_COUNT (max 1)"
                 exit 1
             fi
             
-            if [ "$HIGH_COUNT" -ge 2 ]; then
-                echo ""
-                echo "❌❌❌ PIPELINE FAILED ❌❌❌"
-                echo "🚨 Reason: Found $HIGH_COUNT HIGH vulnerability(ies)"
-                echo "🔒 Policy: 2+ HIGH blocks deployment"
-                cat trivy-results.txt
-                exit 1
-            fi
-            
-            echo ""
-            echo "✅✅✅ SECURITY SCAN PASSED ✅✅✅"
-            echo "🛡️ Infrastructure is secure to proceed"
-            echo "   ✓ CRITICAL: $CRITICAL_COUNT (max 2 allowed)"
-            echo "   ✓ HIGH: $HIGH_COUNT (max 1 allowed)"
+            echo "✅✅✅ SECURITY PASSED (2 CRIT allowed for Docker) ✅✅✅"
         '''
     }
 }
+
         
         stage('🏗️ Terraform Plan') {
             steps {
