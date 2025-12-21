@@ -30,22 +30,14 @@ pipeline {
                     echo "📋 Trivy Scan Results:"
                     cat trivy-results.txt
                     
-                    # 🎯 COUNT vulnerabilities from the summary section
                     echo ""
                     echo "🔢 Parsing Vulnerability Counts..."
                     
-                    # Extract counts from Trivy output
-                    CRITICAL_COUNT=$(grep -i "CRITICAL:" trivy-results.txt | grep -oP '\d+' | head -1 || echo "0")
-                    HIGH_COUNT=$(grep -i "HIGH:" trivy-results.txt | grep -oP '\d+' | head -1 || echo "0")
+                    # Count CRITICAL vulnerabilities
+                    CRITICAL_COUNT=$(grep -c "Severity: CRITICAL" trivy-results.txt 2>/dev/null || echo "0")
                     
-                    # Alternative parsing if above doesn't work
-                    if [ -z "$CRITICAL_COUNT" ] || [ "$CRITICAL_COUNT" = "0" ]; then
-                        CRITICAL_COUNT=$(grep -c "Severity: CRITICAL" trivy-results.txt || echo "0")
-                    fi
-                    
-                    if [ -z "$HIGH_COUNT" ] || [ "$HIGH_COUNT" = "0" ]; then
-                        HIGH_COUNT=$(grep -c "Severity: HIGH" trivy-results.txt || echo "0")
-                    fi
+                    # Count HIGH vulnerabilities
+                    HIGH_COUNT=$(grep -c "Severity: HIGH" trivy-results.txt 2>/dev/null || echo "0")
                     
                     echo "================================"
                     echo "📊 VULNERABILITY SUMMARY:"
