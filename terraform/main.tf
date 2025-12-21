@@ -65,13 +65,20 @@ resource "aws_security_group" "main" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  # Egress - Restricted to VPC CIDR only
-  egress {
-  description = "Internet access"  # ← VULNERABLE
+  # # Egress - Restricted to VPC CIDR only
+  # egress {
+  # description = "Internet access"  # ← VULNERABLE
+  # from_port   = 0
+  # to_port     = 0
+  # protocol    = "-1"
+  # cidr_blocks = ["0.0.0.0/0"]     # ← CRITICAL: WORLD ACCESS
+#}
+egress {
+  description = "VPC internal only"
   from_port   = 0
   to_port     = 0
   protocol    = "-1"
-  cidr_blocks = ["0.0.0.0/0"]     # ← CRITICAL: WORLD ACCESS
+  cidr_blocks = ["10.123.0.0/16"]  # ✅ VPC ONLY
 }
 
   tags = {
