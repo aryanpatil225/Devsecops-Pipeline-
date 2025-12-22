@@ -5,7 +5,7 @@ variable "region" {
 }
 
 variable "key_name" {
-  description = devops
+  description = "SSH key pair name"
   type        = string
-  default     = "devsecops-key"
+  default     = "devops"
 }
