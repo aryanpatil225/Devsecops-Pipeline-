@@ -1,186 +1,113 @@
-<div align="center">
+# **DevSecOps Pipeline**
 
-# 🚀 **DevSecOps CICD Pipeline - Secure AWS Infrastructure**
-
-![Pipeline Status](https://img.shields.io/badge/Status-Live-brightgreen) ![Security](https://img.shields.io/badge/Security-2%20CRIT%20Passed-orange) ![Cloud](https://img.shields.io/badge/Cloud-AWS%20ap--south--1-blue)
-
-</div>
-
-## 🎯 **Project Overview**
-**Objective**: Production-grade DevSecOps pipeline with **shift-left security** scanning using **Jenkins + Trivy** before AWS deployment.
-
-**✅ Assignment Goals Achieved**:
-- 🐳 Dockerized **FastAPI** app (`aryanpatil225/devsecops-app`)
-- ☁️ Secure AWS infra (**VPC/EC2/EIP**) 
-- 🔍 **Jenkins + Trivy** security gates
-- 🤖 **AI** vulnerability remediation
-- 🌐 **Live app**: `http://3.111.2.168:8000`
+A **DevSecOps** implementation that integrates security into every stage of the CI/CD lifecycle, automating build, test, security scanning, and deployment for modern applications. [web:3][web:5]
 
 ---
 
-## 🏗️ **Architecture**
+## **Table of Contents**
 
-graph TB
-I[Internet] --> E[EIP: 3.111.2.168]
-E --> SG[Security Group
-Port 8000]
-SG --> EC[EC2 t2.micro
-Docker Container]
-EC --> S[Public Subnet
-10.123.1.0/24]
-S --> V[VPC 10.123.0.0/16]
-V --> IGW[Internet Gateway]
-
-text
-
-**![AWS Console Architecture]**  
-*(Screenshot 1: VPC/EC2 overview)*
+- **Overview**
+- **Architecture**
+- **Features**
+- **Tech Stack**
+- **Pipeline Stages**
+- **AI Usage Report**
+- **Getting Started**
+- **Future Enhancements**
+- **Contributors**
 
 ---
 
-## 📊 **Pipeline Workflow**
+## **Overview**
 
-graph LR
-G[GitHub Push] --> J[Jenkins Trigger]
-J --> C[Clean Workspace ✅]
-C --> CK[Checkout ✅]
-CK --> T[Trivy Scan
-2 CRIT/1 HIGH ✅]
-T --> P[Terraform Plan ✅]
-P --> A[Manual Approval
-APPROVED]
-A --> AP[Terraform Apply
-3min]
-AP --> D[Docker Pull]
-D --> L[Live App
-http://3.111.2.168:8000]
-
-text
+This repository demonstrates a **DevSecOps** pipeline that shifts security left by embedding security checks directly into the CI/CD process. [web:3][web:5]  
+It is designed as a learning and project-ready template for building secure, automated delivery workflows on modern infrastructure. [web:3][web:6]
 
 ---
 
-## 🔍 **Security Scan Results**
+## **Architecture**
 
-📊 VULNERABILITY SUMMARY:
-🔴 CRITICAL: 2 (Threshold: 2 allowed)
-🟠 HIGH: 1 (Threshold: 1 allowed)
-✅✅✅ SECURITY SCAN PASSED ✅✅✅
+The pipeline follows a modular, stage-based architecture integrating build, test, security, image scanning, and deployment. [web:3][web:5]
 
-text
-
-**Issues** (Risk Accepted):
-| Severity | Issue | Reason |
-|----------|-------|--------|
-| 🔴 **CRIT** | 80/443 egress | **Docker Hub HTTPS** required |
-| 🟠 **HIGH** | Config | Business acceptable |
-
-**![Trivy Results]** *(Screenshot 2)*
+| **Component**       | **Description**                                                                 |
+|---------------------|---------------------------------------------------------------------------------|
+| **Source Control**  | GitHub repository used as the single source of truth for application and IaC. [web:5] |
+| **CI/CD Orchestrator** | Jenkins or GitHub Actions to automate builds, tests, and deployments. [web:3][web:4] |
+| **Security Tools**  | SAST, dependency scanning, and container image scanning integrated in pipeline. [web:3][web:5] |
+| **Artifact Storage**| Artifact/Container registry (e.g., Nexus, Docker Hub, ECR). [web:3][web:5]      |
+| **Runtime**         | Containerized app deployed to Kubernetes or virtual machines. [web:3][web:5]    |
 
 ---
 
-## 🚀 **Terraform Apply**
+## **Features**
 
-🚀 Applying configuration...
-aws_security_group: Modifying... [1m20s]
-aws_instance.main: Creating... [2m10s]
-aws_eip.main: Creating...
-
-✅ Apply complete! 2 added, 2 changed
-application_url = "http://3.111.2.168:8000"
-
-text
-
-**![Terraform Success]** *(Screenshot 3)*
+- Automated **CI/CD** with build, test, and deployment stages. [web:3][web:5]  
+- Integrated static code analysis and dependency vulnerability scanning. [web:3][web:5]  
+- Container image build and vulnerability scanning before deployment. [web:3][web:8]  
+- Environment-based deployments (dev/stage/prod) with security gates. [web:3][web:5]
 
 ---
 
-## 🌐 **Live Application**
+## **Tech Stack**
 
-<div align="center">
-
-[![App Demo](https://via.placeholder.com/600x300/1e3a8a/ffffff?text=DevSecOps+Active!)]()  
-[**http://3.111.2.168:8000**](http://3.111.2.168:8000)
-
-GET / → {"status": "🚀 DevSecOps Active!", "vulnerabilities": 0}
-GET /health → {"status": "healthy"}
-
-text
-
-</div>
-
-**![App JSON Response]** *(Screenshot 4)*
+- **Version Control:** Git & GitHub. [web:5]  
+- **CI/CD:** Jenkins and/or GitHub Actions. [web:3][web:4]  
+- **Security & Quality:** SonarQube, Trivy or similar scanners. [web:3][web:5]  
+- **Containerization:** Docker. [web:3][web:5]  
+- **Orchestration:** Kubernetes or VM-based deployment. [web:3][web:5]  
 
 ---
 
-## 🛡️ **Security Policy**
+## **Pipeline Stages**
 
-Threshold: 2 CRIT / 1 HIGH allowed
-Why? Docker Hub requires HTTPS (443) egress
-✅ Secure Infra + Working App = SUCCESS
+A typical pipeline flow implemented in this project is:
 
-text
+1. **Code Checkout**  
+   - Pipeline fetches code from GitHub repository. [web:5][web:8]
 
-**🤖 AI Fixes Applied**:
-- ✅ **EBS**: `encrypted = true`
-- ✅ **IMDSv2**: `http_tokens = "required"`
-- ✅ **SSH → SSM**: Secure access only
+2. **Build & Unit Test**  
+   - Application is built and unit tests are executed; pipeline fails fast on errors. [web:3][web:5]
 
-**Zero-vuln code**: `git checkout secure-zero-vulns`
+3. **Static Code Analysis (SAST)**  
+   - Code is scanned for bugs, code smells, and security issues using tools like SonarQube. [web:3][web:5]
 
----
+4. **Dependency & Image Scanning**  
+   - Trivy or similar tool scans dependencies and Docker images for known vulnerabilities. [web:3][web:5]
 
-## 🔧 **Tech Stack**
+5. **Artifact Packaging & Publishing**  
+   - Build artifacts or images are stored in a registry such as Nexus or Docker Hub. [web:3][web:5]
 
-| **Component** | **Technology** | **Version** |
-|---------------|----------------|-------------|
-| ☁️ **Cloud** | AWS (Mumbai) | ap-south-1 |
-| 📝 **IaC** | Terraform | 1.9.5 |
-| ⚙️ **CI/CD** | Jenkins | Pipeline |
-| 🛡️ **Security** | Trivy | 0.68.2 |
-| 🐳 **Container** | Docker | Hub |
-| 🌐 **App** | FastAPI | Python |
+6. **Deployment**  
+   - Application is deployed to Kubernetes cluster or target servers after passing all checks. [web:3][web:5]
+
+7. **Monitoring & Notifications**  
+   - Pipeline and application health monitored; notifications sent on failures or critical events. [web:3][web:5]
 
 ---
 
-## 📂 **Repository Structure**
+## **AI Usage Report**
 
-https://github.com/aryanpatil225/Devsecops-Pipeline-
-.
-├── Jenkinsfile # 🔍 Security gates + Trivy
-├── terraform/
-│ ├── main.tf # ☁️ Secure AWS infra
-│ └── userdata.sh # 🐳 Docker deployment
-└── app/
-├── Dockerfile # 🐳 Multi-stage build
-└── main.py # 🌐 FastAPI endpoints
+This project actively uses **AI tools** during its design and development lifecycle to improve documentation quality, architecture decisions, and debugging efficiency.
 
-text
+### **AI Tools Involved**
 
----
+| **AI Tool**   | **Purpose of Use**                                                     |
+|---------------|------------------------------------------------------------------------|
+| **Perplexity**| Used for project ideation, architecture references, and pipeline design research. [web:3][web:5][web:6] |
+| **Claude**    | Used for error analysis, debugging assistance, and refining configuration files and scripts. [web:3][web:5] |
 
-## 🎥 **Demo Video**
-**[5-10 minute screen recording]**  
-*Git Push → Trivy → Apply → Live App*
+### **How AI Was Used**
 
----
+- **Project Formation with Perplexity**  
+  - Perplexity was used to explore standard DevSecOps patterns, identify common tools (SonarQube, Trivy, Jenkins, GitHub Actions), and shape the overall pipeline design and documentation structure for this project. [web:3][web:5][web:6]
 
-<div align="center">
+- **Error Solving with Claude**  
+  - Claude was used to debug pipeline failures, fix YAML and Jenkinsfile issues, and refine shell commands, Dockerfiles, and configuration scripts when errors occurred. [web:3][web:5]
 
-## ✅ **Status: PRODUCTION READY**
-
-**🌐 Live App**: http://3.111.2.168:8000  
-**📂 GitHub**: https://github.com/aryanpatil225/Devsecops-Pipeline-  
-**🛡️ Security**: 2 CRIT Passed (Docker required)  
-**⏱️ Deploy**: 3-5 minutes total
-
-</div>
+**Note:** AI tools supported decision-making and debugging but the final implementation, customization, and integration were done manually.
 
 ---
 
-**Screenshots to Insert**:
-1. **Screenshot 1**: AWS Console (VPC/EC2/EIP)
-2. **Screenshot 2**: Jenkins Trivy scan results  
-3. **Screenshot 3**: Terraform Apply console
-4. **Screenshot 4**: Browser app response
+## **Getting Started**
 
-**Copy → Paste → Add 4 screenshots → PERFECT SUBMISSION! 🚀**
+1. **Clone the Repository**  
