@@ -1,6 +1,14 @@
 # **DevSecOps Pipeline**
 
-A **DevSecOps** implementation that integrates security into every stage of the CI/CD lifecycle, automating build, test, security scanning, and deployment for modern applications. [web:3][web:5]
+A **DevSecOps** implementation that integrates security into every stage of the CI/CD lifecycle, automating build, test, security scanning, and deployment for modern applications.
+
+---
+
+## **🚀 Live Application**
+
+**Application URL:** [http://35.154.106.48:8000](http://35.154.106.48:8000/)
+
+The deployed application is running on AWS EC2 and accessible via the above link.
 
 ---
 
@@ -20,41 +28,40 @@ A **DevSecOps** implementation that integrates security into every stage of the 
 
 ## **Overview**
 
-This repository demonstrates a **DevSecOps** pipeline that shifts security left by embedding security checks directly into the CI/CD process. [web:3][web:5]  
-It is designed as a learning and project-ready template for building secure, automated delivery workflows on modern infrastructure. [web:3][web:6]
+This repository demonstrates a **DevSecOps** pipeline that shifts security left by embedding security checks directly into the CI/CD process. It is designed as a learning and project-ready template for building secure, automated delivery workflows on modern infrastructure.
 
 ---
 
 ## **Architecture**
 
-The pipeline follows a modular, stage-based architecture integrating build, test, security, image scanning, and deployment. [web:3][web:5]
+The pipeline follows a modular, stage-based architecture integrating build, test, security, image scanning, and deployment.
 
 | **Component**       | **Description**                                                                 |
 |---------------------|---------------------------------------------------------------------------------|
-| **Source Control**  | GitHub repository used as the single source of truth for application and IaC. [web:5] |
-| **CI/CD Orchestrator** | Jenkins or GitHub Actions to automate builds, tests, and deployments. [web:3][web:4] |
-| **Security Tools**  | SAST, dependency scanning, and container image scanning integrated in pipeline. [web:3][web:5] |
-| **Artifact Storage**| Artifact/Container registry (e.g., Nexus, Docker Hub, ECR). [web:3][web:5]      |
-| **Runtime**         | Containerized app deployed to Kubernetes or virtual machines. [web:3][web:5]    |
+| **Source Control**  | GitHub repository used as the single source of truth for application and IaC.  |
+| **CI/CD Orchestrator** | Jenkins or GitHub Actions to automate builds, tests, and deployments.       |
+| **Security Tools**  | SAST, dependency scanning, and container image scanning integrated in pipeline. |
+| **Artifact Storage**| Artifact/Container registry (e.g., Nexus, Docker Hub, ECR).                    |
+| **Runtime**         | Containerized app deployed to Kubernetes or virtual machines.                  |
 
 ---
 
 ## **Features**
 
-- Automated **CI/CD** with build, test, and deployment stages. [web:3][web:5]  
-- Integrated static code analysis and dependency vulnerability scanning. [web:3][web:5]  
-- Container image build and vulnerability scanning before deployment. [web:3][web:8]  
-- Environment-based deployments (dev/stage/prod) with security gates. [web:3][web:5]
+- Automated **CI/CD** with build, test, and deployment stages.
+- Integrated static code analysis and dependency vulnerability scanning.
+- Container image build and vulnerability scanning before deployment.
+- Environment-based deployments (dev/stage/prod) with security gates.
 
 ---
 
 ## **Tech Stack**
 
-- **Version Control:** Git & GitHub. [web:5]  
-- **CI/CD:** Jenkins and/or GitHub Actions. [web:3][web:4]  
-- **Security & Quality:** SonarQube, Trivy or similar scanners. [web:3][web:5]  
-- **Containerization:** Docker. [web:3][web:5]  
-- **Orchestration:** Kubernetes or VM-based deployment. [web:3][web:5]  
+- **Version Control:** Git & GitHub
+- **CI/CD:** Jenkins and/or GitHub Actions
+- **Security & Quality:** SonarQube, Trivy, OWASP Dependency-Check
+- **Containerization:** Docker
+- **Orchestration:** Kubernetes or VM-based deployment
 
 ---
 
@@ -63,25 +70,25 @@ The pipeline follows a modular, stage-based architecture integrating build, test
 A typical pipeline flow implemented in this project is:
 
 1. **Code Checkout**  
-   - Pipeline fetches code from GitHub repository. [web:5][web:8]
+   Pipeline fetches code from GitHub repository.
 
 2. **Build & Unit Test**  
-   - Application is built and unit tests are executed; pipeline fails fast on errors. [web:3][web:5]
+   Application is built and unit tests are executed; pipeline fails fast on errors.
 
 3. **Static Code Analysis (SAST)**  
-   - Code is scanned for bugs, code smells, and security issues using tools like SonarQube. [web:3][web:5]
+   Code is scanned for bugs, code smells, and security issues using tools like SonarQube.
 
 4. **Dependency & Image Scanning**  
-   - Trivy or similar tool scans dependencies and Docker images for known vulnerabilities. [web:3][web:5]
+   Trivy or OWASP Dependency-Check scans dependencies and Docker images for known vulnerabilities.
 
 5. **Artifact Packaging & Publishing**  
-   - Build artifacts or images are stored in a registry such as Nexus or Docker Hub. [web:3][web:5]
+   Build artifacts or images are stored in a registry such as Nexus or Docker Hub.
 
 6. **Deployment**  
-   - Application is deployed to Kubernetes cluster or target servers after passing all checks. [web:3][web:5]
+   Application is deployed to Kubernetes cluster or target servers after passing all checks.
 
 7. **Monitoring & Notifications**  
-   - Pipeline and application health monitored; notifications sent on failures or critical events. [web:3][web:5]
+   Pipeline and application health monitored; notifications sent on failures or critical events.
 
 ---
 
@@ -93,16 +100,16 @@ This project actively uses **AI tools** during its design and development lifecy
 
 | **AI Tool**   | **Purpose of Use**                                                     |
 |---------------|------------------------------------------------------------------------|
-| **Perplexity**| Used for project ideation, architecture references, and pipeline design research. [web:3][web:5][web:6] |
-| **Claude**    | Used for error analysis, debugging assistance, and refining configuration files and scripts. [web:3][web:5] |
+| **Perplexity**| Used for project ideation, architecture references, and pipeline design research. |
+| **Claude**    | Used for error analysis, debugging assistance, and refining configuration files and scripts. |
 
 ### **How AI Was Used**
 
 - **Project Formation with Perplexity**  
-  - Perplexity was used to explore standard DevSecOps patterns, identify common tools (SonarQube, Trivy, Jenkins, GitHub Actions), and shape the overall pipeline design and documentation structure for this project. [web:3][web:5][web:6]
+  Perplexity was used to explore standard DevSecOps patterns, identify common tools (SonarQube, Trivy, Jenkins, GitHub Actions), and shape the overall pipeline design and documentation structure for this project.
 
 - **Error Solving with Claude**  
-  - Claude was used to debug pipeline failures, fix YAML and Jenkinsfile issues, and refine shell commands, Dockerfiles, and configuration scripts when errors occurred. [web:3][web:5]
+  Claude was used to debug pipeline failures, fix YAML and Jenkinsfile issues, and refine shell commands, Dockerfiles, and configuration scripts when errors occurred.
 
 **Note:** AI tools supported decision-making and debugging but the final implementation, customization, and integration were done manually.
 
@@ -110,4 +117,39 @@ This project actively uses **AI tools** during its design and development lifecy
 
 ## **Getting Started**
 
-1. **Clone the Repository**  
+### **1. Clone the Repository**
+
+git clone https://github.com/aryanpatil225/Devsecops-Pipeline-.git
+cd Devsecops-Pipeline-
+
+
+### **2. Configure CI/CD**
+
+- Import Jenkins pipeline or enable GitHub Actions workflow from this repository.
+- Set required credentials (registry, GitHub token, Kubernetes context, etc.) in your CI/CD tool.
+
+### **3. Run the Pipeline**
+
+- Commit and push changes to trigger the pipeline.
+- Observe stages for build, test, security scans, and deployment.
+
+---
+
+## **Future Enhancements**
+
+- Add **dynamic application security testing (DAST)** stage for runtime security checks.
+- Integrate **policy-as-code** (e.g., OPA, Conftest) for enforcing security/compliance rules.
+- Extend monitoring using tools like Prometheus and Grafana for deeper observability.
+
+---
+
+## **Contributors**
+
+- **Author:** Aryan Patil (GitHub: `aryanpatil225`)
+- **AI Assistance:**  
+  - **Perplexity** for project formation and documentation structure.
+  - **Claude** for error solving and configuration debugging.
+
+---
+
+**⭐ If you found this project helpful, please give it a star!**
