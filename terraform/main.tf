@@ -180,5 +180,5 @@ output "instance_id" {
 
 output "ssh_command" {
   description = "SSH connection command"
-  value       = "ssh -i ~/.ssh/${var.key_name\}.pem ec2-user@${aws_eip.app.public_ip}"
+  value       = "ssh -i ~/.ssh/${var.key_name}.pem ec2-user@${aws_eip.app.public_ip}"
 }
