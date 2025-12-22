@@ -177,14 +177,6 @@ cd Devsecops-Pipeline-
 - Extend monitoring using tools like Prometheus and Grafana for deeper observability.
 
 ---
-
-## **Contributors**
-
-- **Author:** Aryan Patil (GitHub: `aryanpatil225`)
-- **AI Assistance:**  
-  - **Perplexity** for project formation and documentation structure.
-  - **Claude** for error solving and configuration debugging.
-
+ THANK YOU
 ---
 
-**⭐ If you found this project helpful, please give it a star!**
