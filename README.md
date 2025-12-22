@@ -94,24 +94,59 @@ A typical pipeline flow implemented in this project is:
 
 ## **AI Usage Report**
 
-This project actively uses **AI tools** during its design and development lifecycle to improve documentation quality, architecture decisions, and debugging efficiency.
+This project leverages **AI tools strategically** throughout its development lifecycle. Understanding the strengths of different AI models enabled me to select the right tool for each specific task, optimizing both productivity and output quality.
 
 ### **AI Tools Involved**
 
-| **AI Tool**   | **Purpose of Use**                                                     |
-|---------------|------------------------------------------------------------------------|
-| **Perplexity**| Used for project ideation, architecture references, and pipeline design research. |
-| **Claude**    | Used for error analysis, debugging assistance, and refining configuration files and scripts. |
+| **AI Tool**   | **Primary Use Case**                          | **Why This Tool?**                                                                 |
+|---------------|-----------------------------------------------|------------------------------------------------------------------------------------|
+| **Perplexity**| Research, architecture design, best practices | Real-time web search capabilities provide up-to-date DevSecOps patterns, tool comparisons, and industry standards. |
+| **Claude**    | Debugging, code review, configuration fixes   | Superior code understanding and context retention make it ideal for analyzing complex error logs and multi-file configurations. |
 
-### **How AI Was Used**
+### **Strategic AI Usage**
 
-- **Project Formation with Perplexity**  
-  Perplexity was used to explore standard DevSecOps patterns, identify common tools (SonarQube, Trivy, Jenkins, GitHub Actions), and shape the overall pipeline design and documentation structure for this project.
+#### **Phase 1: Project Formation & Research (Perplexity)**
 
-- **Error Solving with Claude**  
-  Claude was used to debug pipeline failures, fix YAML and Jenkinsfile issues, and refine shell commands, Dockerfiles, and configuration scripts when errors occurred.
+Perplexity was strategically chosen for the initial research phase due to its ability to search and synthesize current information from multiple sources:
 
-**Note:** AI tools supported decision-making and debugging but the final implementation, customization, and integration were done manually.
+- **Architecture Research:** Explored modern DevSecOps pipeline architectures, comparing Jenkins vs GitHub Actions workflows.
+- **Tool Selection:** Researched and compared security scanning tools (SonarQube vs CodeQL, Trivy vs Grype) to identify best-fit solutions.
+- **Best Practices:** Gathered industry standards for CI/CD security gates, deployment strategies, and container security hardening.
+- **Documentation Structure:** Analyzed well-documented DevSecOps repositories to design comprehensive README structure.
+
+**Key Insight:** Perplexity's real-time search provided access to latest 2024-2025 DevSecOps trends and tool updates, ensuring the project follows current industry standards rather than outdated practices.
+
+#### **Phase 2: Implementation & Error Resolution (Claude)**
+
+Claude was selected for development and debugging due to its strong reasoning capabilities and ability to handle complex technical contexts:
+
+- **Configuration Debugging:** Fixed syntax errors in Jenkinsfile, GitHub Actions YAML, and Docker Compose files.
+- **Pipeline Failures:** Analyzed multi-stage pipeline logs to identify root causes of build, test, and deployment failures.
+- **Script Optimization:** Refined Bash scripts for security scanning integration and automated deployment.
+- **Error Pattern Recognition:** Identified recurring configuration issues and suggested preventive patterns.
+
+**Key Insight:** Claude excels at understanding the relationships between different configuration files (Dockerfile, Jenkinsfile, K8s manifests) and providing context-aware solutions that consider the entire project structure.
+
+### **AI Tool Selection Rationale**
+
+| **Task Type**                  | **Selected Tool** | **Reason**                                                                 |
+|--------------------------------|-------------------|---------------------------------------------------------------------------|
+| Current trends & comparisons   | Perplexity        | Real-time web access ensures latest information and tool updates.         |
+| Complex debugging              | Claude            | Deep code comprehension and multi-file context tracking.                  |
+| Architecture decisions         | Perplexity        | Aggregates multiple expert opinions and real-world implementations.       |
+| Code refactoring               | Claude            | Strong reasoning for optimization and maintaining code consistency.       |
+| Documentation writing          | Claude            | Better at maintaining consistent tone and technical accuracy.             |
+
+### **Human Oversight & Final Implementation**
+
+While AI tools accelerated research and debugging, all final decisions were made through:
+
+- **Manual testing and validation** of each pipeline stage
+- **Security review** of suggested configurations
+- **Performance optimization** based on actual deployment metrics
+- **Custom modifications** to fit specific project requirements
+
+**Important Note:** AI suggestions were treated as starting points, not final solutions. Each recommendation was evaluated, tested, and adapted to ensure security, reliability, and alignment with project goals.
 
 ---
 
@@ -119,9 +154,9 @@ This project actively uses **AI tools** during its design and development lifecy
 
 ### **1. Clone the Repository**
 
+
 git clone https://github.com/aryanpatil225/Devsecops-Pipeline-.git
 cd Devsecops-Pipeline-
-
 
 ### **2. Configure CI/CD**
 
