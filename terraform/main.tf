@@ -30,12 +30,12 @@ resource "aws_vpc" "main" {
   }
 }
 
-# Public Subnet
+# Public Subnet (without auto-assign public IP) ✅ FIXES HIGH: AVD-AWS-0164
 resource "aws_subnet" "public" {
   vpc_id                  = aws_vpc.main.id
   cidr_block              = "10.123.1.0/24"
   availability_zone       = "${var.region}a"
-  map_public_ip_on_launch = true
+  map_public_ip_on_launch = false  # ✅ CHANGED to false
   
   tags = {
     Name = "devsecops-public-subnet"
@@ -71,7 +71,7 @@ resource "aws_route_table_association" "public" {
   route_table_id = aws_route_table.public.id
 }
 
-# Security Group
+# Security Group with restricted egress ✅ FIXES CRITICAL: AVD-AWS-0104
 resource "aws_security_group" "app" {
   name        = "devsecops-app-sg"
   description = "Security group for DevSecOps application"
@@ -86,12 +86,21 @@ resource "aws_security_group" "app" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  # Egress - Allow all outbound
+  # Egress - HTTPS only (for Docker Hub, SSM, etc.)
   egress {
-    description = "Allow all outbound"
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
+    description = "HTTPS for AWS services and Docker"
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  # Egress - HTTP for package repos
+  egress {
+    description = "HTTP for package repositories"
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
 
@@ -138,7 +147,19 @@ resource "aws_iam_instance_profile" "ec2" {
   }
 }
 
-# EC2 Instance
+# Elastic IP (manually assigned)
+resource "aws_eip" "app" {
+  domain   = "vpc"
+  instance = aws_instance.app.id
+  
+  tags = {
+    Name = "devsecops-app-eip"
+  }
+  
+  depends_on = [aws_internet_gateway.main]
+}
+
+# EC2 Instance with encrypted volume ✅ FIXES HIGH: AVD-AWS-0131
 resource "aws_instance" "app" {
   ami                    = data.aws_ami.amazon_linux_2.id
   instance_type          = "t2.micro"
@@ -148,10 +169,11 @@ resource "aws_instance" "app" {
   
   user_data = base64encode(file("${path.module}/userdata.sh"))
 
-  # Root volume
+  # Encrypted root volume ✅ FIXES HIGH: AVD-AWS-0131
   root_block_device {
     volume_size           = 20
     volume_type           = "gp3"
+    encrypted             = true  # ✅ ENCRYPTION ENABLED
     delete_on_termination = true
     
     tags = {
@@ -176,17 +198,17 @@ resource "aws_instance" "app" {
 # Outputs
 output "application_url" {
   description = "Application URL"
-  value       = "http://${aws_instance.app.public_ip}:8000"
+  value       = "http://${aws_eip.app.public_ip}:8000"
 }
 
 output "health_check_url" {
   description = "Health check"
-  value       = "http://${aws_instance.app.public_ip}:8000/health"
+  value       = "http://${aws_eip.app.public_ip}:8000/health"
 }
 
 output "public_ip" {
-  description = "Public IP"
-  value       = aws_instance.app.public_ip
+  description = "Elastic IP"
+  value       = aws_eip.app.public_ip
 }
 
 output "instance_id" {
