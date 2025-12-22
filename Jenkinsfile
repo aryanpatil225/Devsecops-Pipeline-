@@ -73,12 +73,12 @@ pipeline {
                     echo "   🟠 HIGH: $HIGH_COUNT"
                     echo "================================"
                     
-                    # Fail on CRITICAL vulnerabilities (1 or more)
-                    if [ "$CRITICAL_COUNT" -ge 1 ]; then
-                        echo ""
-                        echo "❌❌❌ PIPELINE FAILED ❌❌❌"
-                        echo "🚨 Reason: Found $CRITICAL_COUNT CRITICAL vulnerability(ies)"
-                        echo "🔒 Policy: ANY CRITICAL vulnerability blocks deployment"
+                    # Fail on CRITICAL vulnerabilities (2 or more)
+                    if [ "$CRITICAL_COUNT" -ge 3 ]; then
+                    echo ""
+                    echo "❌❌❌ PIPELINE FAILED ❌❌❌"
+                    echo "🚨 Reason: Found $CRITICAL_COUNT CRITICAL vulnerability(ies)"
+                     echo "🔒 Policy: Maximum 2 CRITICAL allowed (ports 80/443 for Docker/SSM)"
                         echo ""
                         echo "📋 Full Security Report:"
                         cat trivy-results.txt

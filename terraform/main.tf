@@ -71,9 +71,9 @@ resource "aws_route_table_association" "main" {
   route_table_id = aws_route_table.main.id
 }
 
-# Security Group - VPC ONLY egress
+# Security Group - Allow HTTPS for Docker & SSM
 resource "aws_security_group" "app" {
-  name        = "devsecops-app-sg-v2"  # ✅ CHANGED name to avoid conflict
+  name        = "devsecops-app-sg-v2"
   description = "Security group for DevSecOps application"
   vpc_id      = aws_vpc.main.id
 
@@ -86,7 +86,25 @@ resource "aws_security_group" "app" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  # Egress - VPC internal ONLY (✅ 0 CRITICAL)
+  # Egress - HTTPS for Docker Hub & SSM
+  egress {
+    description = "HTTPS for Docker Hub and AWS services"
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  # Egress - HTTP for packages
+  egress {
+    description = "HTTP for package repos"
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  # Egress - VPC internal
   egress {
     description = "VPC internal only"
     from_port   = 0
