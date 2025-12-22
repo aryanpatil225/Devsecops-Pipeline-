@@ -119,10 +119,11 @@ resource "aws_instance" "app" {
   
   user_data = base64encode(file("${path.module}/userdata.sh"))
 
-  # Root volume
+  # Root volume with encryption ✅ FIXES HIGH: AVD-AWS-0131
   root_block_device {
     volume_size           = 20
     volume_type           = "gp3"
+    encrypted             = true  # ✅ Encryption enabled
     delete_on_termination = true
     
     tags = {
