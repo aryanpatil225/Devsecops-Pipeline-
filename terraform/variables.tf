@@ -5,7 +5,7 @@ variable "region" {
 }
 
 variable "key_name" {
-  description = devops.pem
+  description = "SSH key pair name (create this in AWS EC2 console first)"
   type        = string
   default     = "devsecops-key"
 }

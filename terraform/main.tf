@@ -127,7 +127,7 @@ resource "aws_instance" "app" {
   instance_type          = "t2.micro"
   subnet_id              = aws_subnet.public.id
   vpc_security_group_ids = [aws_security_group.app.id]
-  key_name               = var.devops.pem
+  key_name               = var.key_name
   
   user_data = base64encode(file("${path.module}/userdata.sh"))
 
@@ -180,5 +180,5 @@ output "instance_id" {
 
 output "ssh_command" {
   description = "SSH connection command"
-  value       = "ssh -i ~/.ssh/${var.devops.pem}.pem ec2-user@${aws_eip.app.public_ip}"
+  value       = "ssh -i ~/.ssh/${var.key_name\}.pem ec2-user@${aws_eip.app.public_ip}"
 }
