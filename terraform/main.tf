@@ -30,12 +30,12 @@ resource "aws_vpc" "main" {
   }
 }
 
-# Private Subnet (NO public IPs on launch)
+# Private Subnet (NO public IPs - fixes HIGH vulnerability)
 resource "aws_subnet" "private" {
   vpc_id                  = aws_vpc.main.id
-  cidr_block              = "10.123.1.0/24"
+  cidr_block              = "10.123.2.0/24"  # ✅ CHANGED from 10.123.1.0/24
   availability_zone       = "${var.region}a"
-  map_public_ip_on_launch = false  # ✅ Passes Trivy HIGH check
+  map_public_ip_on_launch = false  # ✅ NO public IP
   
   tags = {
     Name = "devsecops-private-subnet"
@@ -73,11 +73,11 @@ resource "aws_route_table_association" "main" {
 
 # Security Group - VPC ONLY egress
 resource "aws_security_group" "app" {
-  name        = "devsecops-app-sg"
+  name        = "devsecops-app-sg-v2"  # ✅ CHANGED name to avoid conflict
   description = "Security group for DevSecOps application"
   vpc_id      = aws_vpc.main.id
 
-  # Ingress - ONLY port 8000 for application
+  # Ingress - ONLY port 8000
   ingress {
     description = "Application port"
     from_port   = 8000
@@ -86,9 +86,9 @@ resource "aws_security_group" "app" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  # Egress - VPC internal ONLY (✅ 0 CRITICAL vulnerabilities)
+  # Egress - VPC internal ONLY (✅ 0 CRITICAL)
   egress {
-    description = "VPC internal communication"
+    description = "VPC internal only"
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
@@ -100,7 +100,7 @@ resource "aws_security_group" "app" {
   }
 }
 
-# S3 VPC Endpoint (for AWS services access)
+# S3 VPC Endpoint
 resource "aws_vpc_endpoint" "s3" {
   vpc_id          = aws_vpc.main.id
   service_name    = "com.amazonaws.${var.region}.s3"
@@ -111,36 +111,9 @@ resource "aws_vpc_endpoint" "s3" {
   }
 }
 
-# ECR VPC Endpoint - Interface endpoint for Docker Hub alternative
-resource "aws_vpc_endpoint" "ecr_api" {
-  vpc_id              = aws_vpc.main.id
-  service_name        = "com.amazonaws.${var.region}.ecr.api"
-  vpc_endpoint_type   = "Interface"
-  subnet_ids          = [aws_subnet.private.id]
-  security_group_ids  = [aws_security_group.app.id]
-  private_dns_enabled = true
-  
-  tags = {
-    Name = "devsecops-ecr-api-endpoint"
-  }
-}
-
-resource "aws_vpc_endpoint" "ecr_dkr" {
-  vpc_id              = aws_vpc.main.id
-  service_name        = "com.amazonaws.${var.region}.ecr.dkr"
-  vpc_endpoint_type   = "Interface"
-  subnet_ids          = [aws_subnet.private.id]
-  security_group_ids  = [aws_security_group.app.id]
-  private_dns_enabled = true
-  
-  tags = {
-    Name = "devsecops-ecr-dkr-endpoint"
-  }
-}
-
-# IAM Role for EC2 (SSM access - no SSH needed)
+# IAM Role for EC2 (SSM access)
 resource "aws_iam_role" "ec2" {
-  name = "devsecops-ec2-role"
+  name = "devsecops-ec2-role-v2"  # ✅ CHANGED name to avoid conflict
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -160,7 +133,7 @@ resource "aws_iam_role" "ec2" {
   }
 }
 
-# Attach SSM policy for secure access
+# Attach SSM policy
 resource "aws_iam_role_policy_attachment" "ssm" {
   role       = aws_iam_role.ec2.name
   policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
@@ -168,7 +141,7 @@ resource "aws_iam_role_policy_attachment" "ssm" {
 
 # Instance Profile
 resource "aws_iam_instance_profile" "ec2" {
-  name = "devsecops-instance-profile"
+  name = "devsecops-instance-profile-v2"  # ✅ CHANGED name
   role = aws_iam_role.ec2.name
 
   tags = {
@@ -198,7 +171,7 @@ resource "aws_instance" "app" {
   
   user_data = base64encode(file("${path.module}/userdata.sh"))
 
-  # Encrypted root volume (✅ Passes AVD-AWS-0131)
+  # Encrypted root volume (✅ fixes AVD-AWS-0131)
   root_block_device {
     volume_size           = 20
     volume_type           = "gp3"
@@ -210,7 +183,7 @@ resource "aws_instance" "app" {
     }
   }
 
-  # IMDSv2 enforced (✅ Security best practice)
+  # IMDSv2 enforced (✅ security best practice)
   metadata_options {
     http_tokens                 = "required"
     http_put_response_hop_limit = 1
@@ -226,26 +199,26 @@ resource "aws_instance" "app" {
 
 # Outputs
 output "application_url" {
-  description = "🌐 Application URL - Open in browser"
+  description = "🌐 Application URL"
   value       = "http://${aws_eip.app.public_ip}:8000"
 }
 
 output "health_check_url" {
-  description = "❤️ Health check endpoint"
+  description = "❤️ Health check"
   value       = "http://${aws_eip.app.public_ip}:8000/health"
 }
 
 output "public_ip" {
-  description = "📍 Elastic IP address"
+  description = "📍 Elastic IP"
   value       = aws_eip.app.public_ip
 }
 
 output "instance_id" {
-  description = "🖥️ EC2 Instance ID"
+  description = "🖥️ Instance ID"
   value       = aws_instance.app.id
 }
 
 output "ssm_connect" {
-  description = "🔐 Connect via SSM (no SSH)"
+  description = "🔐 SSM connection"
   value       = "aws ssm start-session --target ${aws_instance.app.id} --region ${var.region}"
 }
