@@ -21,8 +21,6 @@ The deployed application is running on AWS EC2 and accessible via the above link
 - **Pipeline Stages**
 - **AI Usage Report**
 - **Getting Started**
-- **Future Enhancements**
-- **Contributors**
 
 ---
 
